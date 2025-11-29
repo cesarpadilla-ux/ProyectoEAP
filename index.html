@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Visor de ECG / PPG</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  /* --- Variables de Diseño Moderno (Dark Mode) --- */
+  :root {
+    --bg-body: #121212;
+    --bg-card: #1e1e1e;
+    --bg-sidebar: #181818;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --accent-color: #00e676; /* Verde neón suave para toque médico/tech */
+    --accent-hover: #00c853;
+    --border-color: #333333;
+    --header-bg: #0a0a0a;
+    --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  /* --- Estilos Base --- */
+  body { 
+    background: var(--bg-body); 
+    color: var(--text-primary);
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+    margin: 0; 
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* --- Header --- */
+  header { 
+    background: var(--header-bg); 
+    color: var(--accent-color); 
+    padding: 0 20px; 
+    height: 60px;
+    font-size: 20px; 
+    font-weight: 600; 
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+
+  /* Botón de menú (Hamburguesa) */
+  .menu-toggle {
+    position: absolute;
+    left: 20px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 24px;
+    cursor: pointer;
+    display: none; 
+    transition: color 0.3s;
+  }
+  .menu-toggle:hover { color: var(--accent-color); }
+
+  /* --- Layout Principal --- */
+  .main-container {
+    display: flex;
+    margin-top: 60px; 
+    height: calc(100vh - 60px);
+    width: 100%;
+  }
+
+  /* --- Menú Lateral Estilizado --- */
+  .menu { 
+    width: 260px; 
+    background: var(--bg-sidebar); 
+    padding: 20px; 
+    overflow-y: auto; 
+    border-right: 1px solid var(--border-color); 
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .menu h3 { 
+    margin-top: 10px; 
+    margin-bottom: 20px; 
+    text-align: left; 
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding-left: 10px;
+  }
+  
+  .menu button { 
+    width: 100%; 
+    padding: 14px 15px; 
+    border: none; 
+    background: transparent; 
+    cursor: pointer; 
+    font-size: 14px; 
+    border-radius: 8px; 
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: left;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Efecto Hover y Activo en Menú */
+  .menu button:hover { 
+    background: rgba(255, 255, 255, 0.05); 
+    color: white;
+  }
+  
+  .menu button.active { 
+    background: rgba(0, 230, 118, 0.1); /* Verde transparente */
+    color: var(--accent-color);
+    font-weight: 700;
+  }
+  
+  /* Indicador lateral verde en botón activo */
+  .menu button.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10%;
+    bottom: 10%;
+    width: 4px;
+    background: var(--accent-color);
+    border-radius: 0 4px 4px 0;
+  }
+
+  /* --- Contenido --- */
+  .content { 
+    flex-grow: 1; 
+    padding: 30px; 
+    overflow-y: auto; 
+    background: var(--bg-body);
+  }
+
+  /* --- Tarjetas (Cards) --- */
+  .card { 
+    background: var(--bg-card); 
+    padding: 20px; 
+    border-radius: 12px; 
+    margin-bottom: 25px; 
+    border: 1px solid var(--border-color); 
+    box-shadow: var(--shadow-card);
+  }
+  
+  h2 { 
+    margin-top: 0; 
+    margin-bottom: 15px;
+    font-size: 1.1rem; 
+    text-align: center; 
+    color: var(--text-secondary); 
+    font-weight: 400;
+    letter-spacing: 0.5px;
+  }
+
+  /* Contenedores de gráficas */
+  .chart-container {
+    position: relative;
+    height: 300px; 
+    width: 100%;
+  }
+
+  .chart-container-large {
+    position: relative;
+    height: 500px; 
+    width: 100%;
+  }
+
+  /* --- Instrucciones (Estilo Consola) --- */
+  .step-box { 
+    background: #000; 
+    color: var(--text-secondary); 
+    padding: 15px; 
+    border-radius: 6px; 
+    margin-bottom: 12px; 
+    font-size: 0.9rem;
+    border-left: 3px solid var(--border-color);
+    font-family: 'Courier New', Courier, monospace;
+  }
+  .step-box:hover {
+    border-left-color: var(--accent-color);
+    color: var(--text-primary);
+  }
+
+  .step-title { 
+    font-size: 1rem; 
+    font-weight: bold; 
+    color: var(--accent-color); 
+    margin-bottom: 5px; 
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  /* Scrollbar personalizado moderno */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-body); }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+  /* --- RESPONSIVIDAD (Móvil) --- */
+  @media (max-width: 768px) {
+    .menu-toggle { display: block; } 
+    
+    header { font-size: 18px; text-align: left; justify-content: flex-start; padding-left: 60px; }
+
+    .menu {
+      position: fixed;
+      left: 0;
+      top: 60px; 
+      height: calc(100vh - 60px);
+      z-index: 999;
+      transform: translateX(-100%); 
+      box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+    }
+
+    .menu.open { transform: translateX(0); }
+
+    .content { padding: 15px; }
+    .chart-container { height: 250px; }
+    .chart-container-large { height: 350px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="menu-toggle" onclick="toggleMenu()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+  </button>
+  <span>Visor <span style="color:#fff;">ECG / PPG</span></span>
+</header>
+
+<div class="main-container">
+  <!-- Menú Lateral -->
+  <div class="menu" id="sidebar">
+    <h3>Navegación</h3>
+    <button onclick="showPanel('instrucciones', this)" class="active">Instrucciones</button>
+    
+    <h3>Vistas Generales</h3>
+    <button onclick="showPanel('all_view', this)">ECG y PPG (Todos)</button>
+    <button onclick="showPanel('ppg_view', this)">PPG (4 Canales)</button>
+    
+    <h3>Vistas Individuales</h3>
+    <button onclick="showPanel('ecg', this)">ECG</button>
+    <button onclick="showPanel('ppg_manos', this)">PPG Manos</button>
+    <button onclick="showPanel('ppg_pies', this)">PPG Pies</button>
+    
+    <h3>Análisis Comparativo</h3>
+    <button onclick="showPanel('comp_manos', this)">Comparación Manos</button>
+    <button onclick="showPanel('comp_pies', this)">Comparación Pies</button>
+  </div>
+
+  <!-- Área de Contenido -->
+  <div class="content">
+    
+    <!-- Panel Instrucciones -->
+    <div id="instrucciones" class="panel">
+      <h2 style="text-align: left; color: var(--accent-color); margin-bottom: 20px;">Protocolo de Inicio</h2>
+      <div class="step-box"><div class="step-title">01 / Alimentación</div>Conecte el dispositivo a una toma de corriente estable.</div>
+      <div class="step-box"><div class="step-title">02 / Encendido</div>Active los interruptores de Batería y Alimentación Principal.</div>
+      <div class="step-box"><div class="step-title">03 / Periféricos</div>Conecte monitor HDMI, teclado y mouse.</div>
+      <div class="step-box"><div class="step-title">04 / Sistema</div>Espere la carga completa de la interfaz de usuario.</div>
+      <div class="step-box"><div class="step-title">05 / Red</div>Establezca conexión vía WiFi o Ethernet (LAN).</div>
+      <div class="step-box"><div class="step-title">06 / Terminal</div>Abra la terminal de comandos.</div>
+      <div class="step-box"><div class="step-title">07 / Directorio</div>Ejecute: <b>cd Desktop/EAP</b></div>
+      <div class="step-box"><div class="step-title">08 / Sensores</div>Coloque electrodos ECG y sensores PPG al paciente.</div>
+      <div class="step-box"><div class="step-title">09 / Ejecución</div>Ejecute: <b>python3 eap.py</b></div>
+      <div class="step-box"><div class="step-title">10 / Captura</div>Adquiera datos por >15 segundos. Pulse "Detener" al finalizar.</div>
+      <div class="step-box"><div class="step-title">11 / Verificación</div>Confirme mensaje de "Transferencia Exitosa".</div>
+      <div class="step-box"><div class="step-title">12 / Visualización</div>Refresque esta página para cargar las nuevas señales.</div>
+    </div>
+
+    <!-- Panel ECG (GRANDE) -->
+    <div id="ecg" class="panel" style="display:none;">
+      <div class="card">
+        <h2>Señal ECG en Tiempo Real</h2>
+        <div class="chart-container-large"><canvas id="ecgChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Panel PPG Manos (GRANDE) -->
+    <div id="ppg_manos" class="panel" style="display:none;">
+      <div class="card">
+        <h2>PPG Índice Izquierdo</h2>
+        <div class="chart-container-large"><canvas id="ppg1"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>PPG Índice Derecho</h2>
+        <div class="chart-container-large"><canvas id="ppg2"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Panel PPG Pies (GRANDE) -->
+    <div id="ppg_pies" class="panel" style="display:none;">
+      <div class="card">
+        <h2>PPG Hallux Izquierdo</h2>
+        <div class="chart-container-large"><canvas id="ppg3"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>PPG Hallux Derecho</h2>
+        <div class="chart-container-large"><canvas id="ppg4"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Panel Comparación Manos (GRANDE) -->
+    <div id="comp_manos" class="panel" style="display:none;">
+      <div class="card">
+        <h2>Comparativa Manos (Simultáneo)</h2>
+        <div class="chart-container-large"><canvas id="compareManos"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Panel Comparación Pies (GRANDE) -->
+    <div id="comp_pies" class="panel" style="display:none;">
+      <div class="card">
+        <h2>Comparativa Pies (Simultáneo)</h2>
+        <div class="chart-container-large"><canvas id="comparePies"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Panel TODOS -->
+    <div id="all_view" class="panel" style="display:none;">
+      <h2 style="color:var(--text-primary); margin-bottom: 25px;">Monitor Multicanal Completo</h2>
+      <div class="card"><h2>Canal 1: ECG</h2><div class="chart-container"><canvas id="all_c1"></canvas></div></div>
+      <div class="card"><h2>Canal 2: PPG Índice Izq</h2><div class="chart-container"><canvas id="all_c2"></canvas></div></div>
+      <div class="card"><h2>Canal 3: PPG Índice Der</h2><div class="chart-container"><canvas id="all_c3"></canvas></div></div>
+      <div class="card"><h2>Canal 4: PPG Hallux Izq</h2><div class="chart-container"><canvas id="all_c4"></canvas></div></div>
+      <div class="card"><h2>Canal 5: PPG Hallux Der</h2><div class="chart-container"><canvas id="all_c5"></canvas></div></div>
+    </div>
+
+    <!-- Panel SOLO PPG -->
+    <div id="ppg_view" class="panel" style="display:none;">
+      <h2 style="color:var(--text-primary); margin-bottom: 25px;">Monitor de Fotopletismografía (4 Canales)</h2>
+      <div class="card"><h2>PPG Índice Izq</h2><div class="chart-container"><canvas id="ppg_only_c2"></canvas></div></div>
+      <div class="card"><h2>PPG Índice Der</h2><div class="chart-container"><canvas id="ppg_only_c3"></canvas></div></div>
+      <div class="card"><h2>PPG Hallux Izq</h2><div class="chart-container"><canvas id="ppg_only_c4"></canvas></div></div>
+      <div class="card"><h2>PPG Hallux Der</h2><div class="chart-container"><canvas id="ppg_only_c5"></canvas></div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// --- Configuración Global ---
+const FIREBASE_URL = 'https://practicumii-a9956-default-rtdb.firebaseio.com/ad7606.json';
+const SAMPLE_RATE = 200;  
+const SECONDS_TO_SHOW = 15; 
+const BUFFER_SIZE = SAMPLE_RATE * SECONDS_TO_SHOW; 
+
+let charts = {}; 
+
+// Configuración de Estilo Global para Chart.js en Modo Oscuro
+Chart.defaults.color = '#a0a0a0';
+Chart.defaults.borderColor = '#333';
+
+function toggleMenu() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+  
+  if (btn) {
+    document.querySelectorAll('.menu button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+  }
+}
+
+async function loadData() {
+  try {
+    const res = await fetch(FIREBASE_URL);
+    const data = await res.json();
+
+    if (!data) return;
+
+    const ecg = sliceData(data.CH1);
+    const ppgIzqMano = sliceData(data.CH2);
+    const ppgDerMano = sliceData(data.CH3);
+    const ppgIzqPie = sliceData(data.CH4);
+    const ppgDerPie = sliceData(data.CH5);
+
+    const labels = Array.from({length: ecg.length}, (_, i) => (i / SAMPLE_RATE));
+
+    // Colores Neon Modernos
+    const colRed = '#ff5252'; 
+    const colBlue = '#448aff';
+    const colGreen = '#69f0ae';
+
+    // 1. Individuales (Rojo Neón)
+    renderChart('ecgChart', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
+    renderChart('ppg1', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
+    renderChart('ppg2', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
+    renderChart('ppg3', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
+    renderChart('ppg4', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
+
+    // 2. Comparaciones (Azul y Verde Neón)
+    renderChart('compareManos', labels, [
+      { label: 'Índice Izq', data: ppgIzqMano, color: colBlue },
+      { label: 'Índice Der', data: ppgDerMano, color: colGreen }
+    ]);
+
+    renderChart('comparePies', labels, [
+      { label: 'Hallux Izq', data: ppgIzqPie, color: colBlue },
+      { label: 'Hallux Der', data: ppgDerPie, color: colGreen }
+    ]);
+
+    // 3. Todos
+    renderChart('all_c1', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
+    renderChart('all_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
+    renderChart('all_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
+    renderChart('all_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
+    renderChart('all_c5', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
+
+    // 4. Solo PPG
+    renderChart('ppg_only_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
+    renderChart('ppg_only_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
+    renderChart('ppg_only_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
+    renderChart('ppg_only_c5', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
+
+  } catch (error) {
+    console.error("Error cargando datos:", error);
+  }
+}
+
+function sliceData(arr) {
+  if (!arr) return [];
+  return arr.slice(-BUFFER_SIZE);
+}
+
+function renderChart(canvasId, labels, datasets) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+
+  if (charts[canvasId]) {
+    charts[canvasId].destroy();
+  }
+
+  const chartDatasets = datasets.map(ds => ({
+    label: ds.label,
+    data: ds.data,
+    borderColor: ds.color,
+    backgroundColor: ds.color,
+    borderWidth: 2, // Línea un poco más gruesa para destacar en fondo oscuro
+    pointRadius: 0, 
+    fill: false,
+    tension: 0.2
+  }));
+
+  charts[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: chartDatasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false, 
+      animation: false, 
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: { 
+          display: true,
+          labels: { color: '#e0e0e0' } // Leyenda clara
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          type: 'linear', 
+          title: { display: true, text: 'Tiempo (s)', color: '#a0a0a0' },
+          ticks: { 
+            maxTicksLimit: 15, 
+            stepSize: 1,
+            color: '#808080'
+          },
+          grid: { color: '#333' } // Grid oscuro
+        },
+        y: {
+          display: true,
+          title: { 
+            display: true, 
+            text: 'Voltaje (V)',
+            font: { weight: 'bold' },
+            color: '#a0a0a0'
+          },
+          ticks: { color: '#808080' },
+          grid: { color: '#333' }, // Grid oscuro
+          beginAtZero: false
+        }
+      }
+    }
+  });
+}
+
+loadData();
+
+</script>
+</body>
+</html>
