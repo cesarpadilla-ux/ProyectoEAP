@@ -13,7 +13,7 @@
     --bg-sidebar: #181818;
     --text-primary: #e0e0e0;
     --text-secondary: #a0a0a0;
-    --accent-color: #00e676; /* Verde neón suave para toque médico/tech */
+    --accent-color: #00e676; /* Verde neón suave */
     --accent-hover: #00c853;
     --border-color: #333333;
     --header-bg: #0a0a0a;
@@ -68,6 +68,29 @@
   }
   .menu-toggle:hover { color: var(--accent-color); }
 
+  /* Botón de Descarga CSV a la derecha */
+  .csv-btn {
+    position: absolute;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .csv-btn:hover {
+    background: var(--accent-color);
+    color: #000;
+    border-color: var(--accent-color);
+  }
+
   /* --- Layout Principal --- */
   .main-container {
     display: flex;
@@ -119,19 +142,17 @@
     overflow: hidden;
   }
 
-  /* Efecto Hover y Activo en Menú */
   .menu button:hover { 
     background: rgba(255, 255, 255, 0.05); 
     color: white;
   }
   
   .menu button.active { 
-    background: rgba(0, 230, 118, 0.1); /* Verde transparente */
+    background: rgba(0, 230, 118, 0.1); 
     color: var(--accent-color);
     font-weight: 700;
   }
   
-  /* Indicador lateral verde en botón activo */
   .menu button.active::before {
     content: '';
     position: absolute;
@@ -159,6 +180,7 @@
     margin-bottom: 25px; 
     border: 1px solid var(--border-color); 
     box-shadow: var(--shadow-card);
+    position: relative; /* Necesario para posicionar el botón de cámara */
   }
   
   h2 { 
@@ -169,6 +191,23 @@
     color: var(--text-secondary); 
     font-weight: 400;
     letter-spacing: 0.5px;
+  }
+
+  /* Botón de Cámara para capturar gráfica */
+  .camera-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    z-index: 10;
+  }
+  .camera-btn:hover {
+    color: var(--accent-color);
   }
 
   /* Contenedores de gráficas */
@@ -184,7 +223,7 @@
     width: 100%;
   }
 
-  /* --- Instrucciones (Estilo Consola) --- */
+  /* --- Instrucciones --- */
   .step-box { 
     background: #000; 
     color: var(--text-secondary); 
@@ -208,7 +247,7 @@
     font-family: 'Segoe UI', sans-serif;
   }
 
-  /* Scrollbar personalizado moderno */
+  /* Scrollbar personalizado */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: var(--bg-body); }
   ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
@@ -217,21 +256,14 @@
   /* --- RESPONSIVIDAD (Móvil) --- */
   @media (max-width: 768px) {
     .menu-toggle { display: block; } 
-    
-    header { font-size: 18px; text-align: left; justify-content: flex-start; padding-left: 60px; }
-
+    header { font-size: 18px; text-align: left; justify-content: center; }
+    .csv-btn { padding: 6px 10px; font-size: 12px; }
     .menu {
-      position: fixed;
-      left: 0;
-      top: 60px; 
-      height: calc(100vh - 60px);
-      z-index: 999;
-      transform: translateX(-100%); 
+      position: fixed; left: 0; top: 60px; height: calc(100vh - 60px);
+      z-index: 999; transform: translateX(-100%); 
       box-shadow: 5px 0 15px rgba(0,0,0,0.5);
     }
-
     .menu.open { transform: translateX(0); }
-
     .content { padding: 15px; }
     .chart-container { height: 250px; }
     .chart-container-large { height: 350px; }
@@ -245,6 +277,8 @@
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
   </button>
   <span>Visor <span style="color:#fff;">ECG / PPG</span></span>
+  
+  <button onclick="downloadCSV()" class="csv-btn">⬇ CSV</button>
 </header>
 
 <div class="main-container">
@@ -291,6 +325,7 @@
     <div id="ecg" class="panel" style="display:none;">
       <div class="card">
         <h2>Señal ECG en Tiempo Real</h2>
+        <button class="camera-btn" onclick="downloadImage('ecgChart')" title="Descargar Gráfica">📷</button>
         <div class="chart-container-large"><canvas id="ecgChart"></canvas></div>
       </div>
     </div>
@@ -299,10 +334,12 @@
     <div id="ppg_manos" class="panel" style="display:none;">
       <div class="card">
         <h2>PPG Índice Izquierdo</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg1')" title="Descargar Gráfica">📷</button>
         <div class="chart-container-large"><canvas id="ppg1"></canvas></div>
       </div>
       <div class="card">
         <h2>PPG Índice Derecho</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg2')" title="Descargar Gráfica">📷</button>
         <div class="chart-container-large"><canvas id="ppg2"></canvas></div>
       </div>
     </div>
@@ -311,10 +348,12 @@
     <div id="ppg_pies" class="panel" style="display:none;">
       <div class="card">
         <h2>PPG Hallux Izquierdo</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg3')" title="Descargar Gráfica">📷</button>
         <div class="chart-container-large"><canvas id="ppg3"></canvas></div>
       </div>
       <div class="card">
         <h2>PPG Hallux Derecho</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg4')" title="Descargar Gráfica">📷</button>
         <div class="chart-container-large"><canvas id="ppg4"></canvas></div>
       </div>
     </div>
@@ -323,6 +362,7 @@
     <div id="comp_manos" class="panel" style="display:none;">
       <div class="card">
         <h2>Comparativa Manos (Simultáneo)</h2>
+        <button class="camera-btn" onclick="downloadImage('compareManos')" title="Descargar Gráfica">📷</button>
         <div class="chart-container-large"><canvas id="compareManos"></canvas></div>
       </div>
     </div>
@@ -331,6 +371,7 @@
     <div id="comp_pies" class="panel" style="display:none;">
       <div class="card">
         <h2>Comparativa Pies (Simultáneo)</h2>
+        <button class="camera-btn" onclick="downloadImage('comparePies')" title="Descargar Gráfica">📷</button>
         <div class="chart-container-large"><canvas id="comparePies"></canvas></div>
       </div>
     </div>
@@ -338,20 +379,56 @@
     <!-- Panel TODOS -->
     <div id="all_view" class="panel" style="display:none;">
       <h2 style="color:var(--text-primary); margin-bottom: 25px;">Monitor Multicanal Completo</h2>
-      <div class="card"><h2>Canal 1: ECG</h2><div class="chart-container"><canvas id="all_c1"></canvas></div></div>
-      <div class="card"><h2>Canal 2: PPG Índice Izq</h2><div class="chart-container"><canvas id="all_c2"></canvas></div></div>
-      <div class="card"><h2>Canal 3: PPG Índice Der</h2><div class="chart-container"><canvas id="all_c3"></canvas></div></div>
-      <div class="card"><h2>Canal 4: PPG Hallux Izq</h2><div class="chart-container"><canvas id="all_c4"></canvas></div></div>
-      <div class="card"><h2>Canal 5: PPG Hallux Der</h2><div class="chart-container"><canvas id="all_c5"></canvas></div></div>
+      <div class="card">
+        <h2>Canal 1: ECG</h2>
+        <button class="camera-btn" onclick="downloadImage('all_c1')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="all_c1"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Canal 2: PPG Índice Izq</h2>
+        <button class="camera-btn" onclick="downloadImage('all_c2')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="all_c2"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Canal 3: PPG Índice Der</h2>
+        <button class="camera-btn" onclick="downloadImage('all_c3')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="all_c3"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Canal 4: PPG Hallux Izq</h2>
+        <button class="camera-btn" onclick="downloadImage('all_c4')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="all_c4"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Canal 5: PPG Hallux Der</h2>
+        <button class="camera-btn" onclick="downloadImage('all_c5')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="all_c5"></canvas></div>
+      </div>
     </div>
 
     <!-- Panel SOLO PPG -->
     <div id="ppg_view" class="panel" style="display:none;">
       <h2 style="color:var(--text-primary); margin-bottom: 25px;">Monitor de Fotopletismografía (4 Canales)</h2>
-      <div class="card"><h2>PPG Índice Izq</h2><div class="chart-container"><canvas id="ppg_only_c2"></canvas></div></div>
-      <div class="card"><h2>PPG Índice Der</h2><div class="chart-container"><canvas id="ppg_only_c3"></canvas></div></div>
-      <div class="card"><h2>PPG Hallux Izq</h2><div class="chart-container"><canvas id="ppg_only_c4"></canvas></div></div>
-      <div class="card"><h2>PPG Hallux Der</h2><div class="chart-container"><canvas id="ppg_only_c5"></canvas></div></div>
+      <div class="card">
+        <h2>PPG Índice Izq</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg_only_c2')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="ppg_only_c2"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>PPG Índice Der</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg_only_c3')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="ppg_only_c3"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>PPG Hallux Izq</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg_only_c4')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="ppg_only_c4"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>PPG Hallux Der</h2>
+        <button class="camera-btn" onclick="downloadImage('ppg_only_c5')" title="Descargar Gráfica">📷</button>
+        <div class="chart-container"><canvas id="ppg_only_c5"></canvas></div>
+      </div>
     </div>
 
   </div>
@@ -365,10 +442,28 @@ const SECONDS_TO_SHOW = 15;
 const BUFFER_SIZE = SAMPLE_RATE * SECONDS_TO_SHOW; 
 
 let charts = {}; 
+let globalData = {}; 
 
-// Configuración de Estilo Global para Chart.js en Modo Oscuro
+// Configuración Chart.js
 Chart.defaults.color = '#a0a0a0';
 Chart.defaults.borderColor = '#333';
+
+// --- PLUGIN IMPORTANTE: Fondo blanco/gris en la descarga ---
+// Esto evita que la imagen descargada sea transparente
+const backgroundPlugin = {
+  id: 'customCanvasBackgroundColor',
+  beforeDraw: (chart, args, options) => {
+    const {ctx} = chart;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    // Usamos el mismo color de fondo de las tarjetas
+    ctx.fillStyle = '#1e1e1e'; 
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.restore();
+  }
+};
+Chart.register(backgroundPlugin);
+
 
 function toggleMenu() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -388,6 +483,46 @@ function showPanel(id, btn) {
   }
 }
 
+// --- Función para Descargar IMAGEN de la Gráfica ---
+function downloadImage(chartId) {
+  const canvas = document.getElementById(chartId);
+  // Crear un link temporal
+  const link = document.createElement('a');
+  link.download = `${chartId}_signal.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// --- Función para Descargar CSV ---
+function downloadCSV() {
+    if (!globalData.CH1) { alert("Espera a que carguen los datos para descargar."); return; }
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Tiempo(s),ECG,PPG_Ind_Izq,PPG_Ind_Der,PPG_Pie_Izq,PPG_Pie_Der\n";
+
+    const len = globalData.CH1.length;
+    for(let i = 0; i < len; i++) {
+        const t = (i / SAMPLE_RATE).toFixed(3);
+        const row = [
+            t, 
+            globalData.CH1[i],
+            globalData.CH2[i],
+            globalData.CH3[i],
+            globalData.CH4[i],
+            globalData.CH5[i]
+        ].join(",");
+        csvContent += row + "\r\n";
+    }
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "bioseñales_" + new Date().getTime() + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 async function loadData() {
   try {
     const res = await fetch(FIREBASE_URL);
@@ -401,6 +536,9 @@ async function loadData() {
     const ppgIzqPie = sliceData(data.CH4);
     const ppgDerPie = sliceData(data.CH5);
 
+    // Guardar para CSV
+    globalData = { CH1: ecg, CH2: ppgIzqMano, CH3: ppgDerMano, CH4: ppgIzqPie, CH5: ppgDerPie };
+
     const labels = Array.from({length: ecg.length}, (_, i) => (i / SAMPLE_RATE));
 
     // Colores Neon Modernos
@@ -408,14 +546,14 @@ async function loadData() {
     const colBlue = '#448aff';
     const colGreen = '#69f0ae';
 
-    // 1. Individuales (Rojo Neón)
+    // 1. Individuales
     renderChart('ecgChart', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
     renderChart('ppg1', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
     renderChart('ppg2', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
     renderChart('ppg3', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
     renderChart('ppg4', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
 
-    // 2. Comparaciones (Azul y Verde Neón)
+    // 2. Comparaciones
     renderChart('compareManos', labels, [
       { label: 'Índice Izq', data: ppgIzqMano, color: colBlue },
       { label: 'Índice Der', data: ppgDerMano, color: colGreen }
@@ -461,7 +599,7 @@ function renderChart(canvasId, labels, datasets) {
     data: ds.data,
     borderColor: ds.color,
     backgroundColor: ds.color,
-    borderWidth: 2, // Línea un poco más gruesa para destacar en fondo oscuro
+    borderWidth: 2, 
     pointRadius: 0, 
     fill: false,
     tension: 0.2
@@ -482,9 +620,10 @@ function renderChart(canvasId, labels, datasets) {
         intersect: false,
       },
       plugins: {
-        legend: { 
-          display: true,
-          labels: { color: '#e0e0e0' } // Leyenda clara
+        legend: { display: true, labels: { color: '#e0e0e0' } },
+        // Activamos el fondo personalizado solo al exportar/dibujar
+        customCanvasBackgroundColor: {
+          color: '#1e1e1e',
         }
       },
       scales: {
@@ -492,23 +631,14 @@ function renderChart(canvasId, labels, datasets) {
           display: true,
           type: 'linear', 
           title: { display: true, text: 'Tiempo (s)', color: '#a0a0a0' },
-          ticks: { 
-            maxTicksLimit: 15, 
-            stepSize: 1,
-            color: '#808080'
-          },
-          grid: { color: '#333' } // Grid oscuro
+          ticks: { maxTicksLimit: 15, stepSize: 1, color: '#808080' },
+          grid: { color: '#333' } 
         },
         y: {
           display: true,
-          title: { 
-            display: true, 
-            text: 'Voltaje (V)',
-            font: { weight: 'bold' },
-            color: '#a0a0a0'
-          },
+          title: { display: true, text: 'Voltaje (V)', font: { weight: 'bold' }, color: '#a0a0a0' },
           ticks: { color: '#808080' },
-          grid: { color: '#333' }, // Grid oscuro
+          grid: { color: '#333' }, 
           beginAtZero: false
         }
       }
