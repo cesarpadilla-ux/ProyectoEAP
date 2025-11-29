@@ -180,7 +180,7 @@
     margin-bottom: 25px; 
     border: 1px solid var(--border-color); 
     box-shadow: var(--shadow-card);
-    position: relative; /* Necesario para posicionar el botón de cámara */
+    position: relative; 
   }
   
   h2 { 
@@ -442,29 +442,23 @@ const SECONDS_TO_SHOW = 15;
 const BUFFER_SIZE = SAMPLE_RATE * SECONDS_TO_SHOW; 
 
 let charts = {}; 
-let globalData = {}; 
+let globalData = {}; // Almacenamiento para CSV
 
-// Configuración Chart.js
-Chart.defaults.color = '#a0a0a0';
-Chart.defaults.borderColor = '#333';
-
-// --- PLUGIN IMPORTANTE: Fondo blanco/gris en la descarga ---
-// Esto evita que la imagen descargada sea transparente
+// --- PLUGIN: Fondo GRIS en la descarga (Dark Mode) ---
 const backgroundPlugin = {
   id: 'customCanvasBackgroundColor',
   beforeDraw: (chart, args, options) => {
     const {ctx} = chart;
     ctx.save();
     ctx.globalCompositeOperation = 'destination-over';
-    // Usamos el mismo color de fondo de las tarjetas
-    ctx.fillStyle = '#1e1e1e'; 
+    ctx.fillStyle = '#1e1e1e'; // Fondo oscuro de las tarjetas
     ctx.fillRect(0, 0, chart.width, chart.height);
     ctx.restore();
   }
 };
 Chart.register(backgroundPlugin);
 
-
+// --- Funciones UI ---
 function toggleMenu() {
   document.getElementById('sidebar').classList.toggle('open');
 }
@@ -483,12 +477,33 @@ function showPanel(id, btn) {
   }
 }
 
-// --- Función para Descargar IMAGEN de la Gráfica ---
+// --- Función para Descargar IMAGEN de la Gráfica (Español) ---
 function downloadImage(chartId) {
   const canvas = document.getElementById(chartId);
-  // Crear un link temporal
   const link = document.createElement('a');
-  link.download = `${chartId}_signal.png`;
+  
+  // Mapa de nombres en español
+  const nombresArchivos = {
+    'ecgChart': 'senal_ecg',
+    'ppg1': 'ppg_indice_izquierdo',
+    'ppg2': 'ppg_indice_derecho',
+    'ppg3': 'ppg_hallux_izquierdo',
+    'ppg4': 'ppg_hallux_derecho',
+    'compareManos': 'comparacion_manos',
+    'comparePies': 'comparacion_pies',
+    'all_c1': 'ecg_general',
+    'all_c2': 'ppg_indice_izq_general',
+    'all_c3': 'ppg_indice_der_general',
+    'all_c4': 'ppg_hallux_izq_general',
+    'all_c5': 'ppg_hallux_der_general',
+    'ppg_only_c2': 'ppg_indice_izq_vista_ppg',
+    'ppg_only_c3': 'ppg_indice_der_vista_ppg',
+    'ppg_only_c4': 'ppg_hallux_izq_vista_ppg',
+    'ppg_only_c5': 'ppg_hallux_der_vista_ppg'
+  };
+
+  const nombreFinal = nombresArchivos[chartId] || 'grafica';
+  link.download = `${nombreFinal}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
@@ -517,12 +532,13 @@ function downloadCSV() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "bioseñales_" + new Date().getTime() + ".csv");
+    link.setAttribute("download", "biosenales_" + new Date().getTime() + ".csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
+// --- Lógica de Datos y Gráficas ---
 async function loadData() {
   try {
     const res = await fetch(FIREBASE_URL);
@@ -530,13 +546,13 @@ async function loadData() {
 
     if (!data) return;
 
+    // Procesar datos
     const ecg = sliceData(data.CH1);
     const ppgIzqMano = sliceData(data.CH2);
     const ppgDerMano = sliceData(data.CH3);
     const ppgIzqPie = sliceData(data.CH4);
     const ppgDerPie = sliceData(data.CH5);
 
-    // Guardar para CSV
     globalData = { CH1: ecg, CH2: ppgIzqMano, CH3: ppgDerMano, CH4: ppgIzqPie, CH5: ppgDerPie };
 
     const labels = Array.from({length: ecg.length}, (_, i) => (i / SAMPLE_RATE));
@@ -546,14 +562,12 @@ async function loadData() {
     const colBlue = '#448aff';
     const colGreen = '#69f0ae';
 
-    // 1. Individuales
     renderChart('ecgChart', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
     renderChart('ppg1', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
     renderChart('ppg2', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
     renderChart('ppg3', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
     renderChart('ppg4', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
 
-    // 2. Comparaciones
     renderChart('compareManos', labels, [
       { label: 'Índice Izq', data: ppgIzqMano, color: colBlue },
       { label: 'Índice Der', data: ppgDerMano, color: colGreen }
@@ -564,14 +578,12 @@ async function loadData() {
       { label: 'Hallux Der', data: ppgDerPie, color: colGreen }
     ]);
 
-    // 3. Todos
     renderChart('all_c1', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
     renderChart('all_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
     renderChart('all_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
     renderChart('all_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
     renderChart('all_c5', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
 
-    // 4. Solo PPG
     renderChart('ppg_only_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
     renderChart('ppg_only_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
     renderChart('ppg_only_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
@@ -621,7 +633,7 @@ function renderChart(canvasId, labels, datasets) {
       },
       plugins: {
         legend: { display: true, labels: { color: '#e0e0e0' } },
-        // Activamos el fondo personalizado solo al exportar/dibujar
+        // Fondo gris para descarga en modo oscuro
         customCanvasBackgroundColor: {
           color: '#1e1e1e',
         }
@@ -636,7 +648,12 @@ function renderChart(canvasId, labels, datasets) {
         },
         y: {
           display: true,
-          title: { display: true, text: 'Voltaje (V)', font: { weight: 'bold' }, color: '#a0a0a0' },
+          title: { 
+            display: true, 
+            text: 'Voltaje (V)',
+            font: { weight: 'bold' },
+            color: '#a0a0a0'
+          },
           ticks: { color: '#808080' },
           grid: { color: '#333' }, 
           beginAtZero: false
