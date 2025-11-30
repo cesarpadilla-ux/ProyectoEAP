@@ -3,95 +3,114 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Visor de ECG / PPG</title>
+<title>Visor Clínico ECG / PPG</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  /* --- Variables de Diseño Moderno (Dark Mode) --- */
+  /* --- Diseño Clínico Minimalista (Dark Mode) --- */
   :root {
-    --bg-body: #121212;
-    --bg-card: #1e1e1e;
-    --bg-sidebar: #181818;
+    --bg-body: #050505; 
+    --bg-sidebar: #0f0f0f;
+    --bg-card: #141414;
+    --bg-card-hover: #1f1f1f;
+    --bg-stats: #0a0a0a; 
+    
     --text-primary: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --accent-color: #00e676; /* Verde neón suave */
-    --accent-hover: #00c853;
-    --border-color: #333333;
-    --header-bg: #0a0a0a;
-    --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --text-secondary: #888888;
+    --text-muted: #444444;
+    
+    --accent-color: #00e676; 
+    --accent-dim: rgba(0, 230, 118, 0.05);
+    --border-color: #222222;
+    --header-bg: rgba(10, 10, 10, 0.9);
+    
+    --font-ui: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'Consolas', 'Monaco', monospace; 
+    
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
 
   /* --- Estilos Base --- */
   body { 
     background: var(--bg-body); 
     color: var(--text-primary);
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+    font-family: var(--font-ui);
     margin: 0; 
     display: flex;
     flex-direction: column;
     height: 100vh;
+    overflow: hidden;
   }
 
   /* --- Header --- */
   header { 
     background: var(--header-bg); 
-    color: var(--accent-color); 
-    padding: 0 20px; 
-    height: 60px;
-    font-size: 20px; 
-    font-weight: 600; 
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    text-align: center;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-  }
-
-  /* Botón de menú (Hamburguesa) */
-  .menu-toggle {
-    position: absolute;
-    left: 20px;
-    background: none;
-    border: none;
-    color: var(--text-primary);
-    font-size: 24px;
-    cursor: pointer;
-    display: none; 
-    transition: color 0.3s;
-  }
-  .menu-toggle:hover { color: var(--accent-color); }
-
-  /* Botón de Descarga CSV a la derecha */
-  .csv-btn {
-    position: absolute;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    padding: 0 25px; 
+    height: 60px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: space-between;
+    position: fixed;
+    top: 0; left: 0; width: 100%; z-index: 1000;
+    box-sizing: border-box;
+    backdrop-filter: blur(10px);
   }
-  .csv-btn:hover {
+
+  .brand-area { display: flex; align-items: center; gap: 20px; }
+
+  .brand {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand span { color: var(--accent-color); font-weight: 300; opacity: 0.8;}
+
+  .live-clock {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-left: 1px solid var(--border-color);
+    padding-left: 20px;
+  }
+
+  .header-controls { display: flex; gap: 10px; }
+
+  .menu-toggle {
+    background: none; border: none; color: var(--text-primary);
+    font-size: 20px; cursor: pointer; display: none; margin-right: 15px;
+  }
+
+  .action-btn {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .action-btn:hover {
+    background: var(--text-primary);
+    color: #000;
+    border-color: var(--text-primary);
+  }
+  .action-btn.active-state {
     background: var(--accent-color);
     color: #000;
     border-color: var(--accent-color);
   }
 
-  /* --- Layout Principal --- */
+  /* --- Layout --- */
   .main-container {
     display: flex;
     margin-top: 60px; 
@@ -99,71 +118,56 @@
     width: 100%;
   }
 
-  /* --- Menú Lateral Estilizado --- */
+  /* --- Sidebar --- */
   .menu { 
-    width: 260px; 
+    width: 250px; 
     background: var(--bg-sidebar); 
-    padding: 20px; 
+    padding: 30px 15px; 
     overflow-y: auto; 
     border-right: 1px solid var(--border-color); 
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    gap: 5px;
+    transition: transform 0.3s ease;
   }
 
-  .menu h3 { 
-    margin-top: 10px; 
-    margin-bottom: 20px; 
-    text-align: left; 
-    font-size: 0.85rem;
-    color: var(--text-secondary);
+  .menu-section-title {
+    font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    padding-left: 10px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin: 25px 15px 10px 15px;
+    font-weight: 700;
   }
-  
+  .menu-section-title:first-child { margin-top: 0; }
+
   .menu button { 
     width: 100%; 
-    padding: 14px 15px; 
+    padding: 12px 15px; 
     border: none; 
     background: transparent; 
     cursor: pointer; 
-    font-size: 14px; 
-    border-radius: 8px; 
+    font-size: 0.85rem; 
+    border-radius: 4px; 
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     text-align: left;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    position: relative;
-    overflow: hidden;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
   }
-
+  
   .menu button:hover { 
-    background: rgba(255, 255, 255, 0.05); 
-    color: white;
+    background: rgba(255, 255, 255, 0.02); 
+    color: var(--text-primary);
   }
   
   .menu button.active { 
-    background: rgba(0, 230, 118, 0.1); 
+    background: var(--accent-dim); 
     color: var(--accent-color);
-    font-weight: 700;
+    font-weight: 600;
   }
   
-  .menu button.active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 10%;
-    bottom: 10%;
-    width: 4px;
-    background: var(--accent-color);
-    border-radius: 0 4px 4px 0;
-  }
-
   /* --- Contenido --- */
   .content { 
     flex-grow: 1; 
@@ -172,262 +176,341 @@
     background: var(--bg-body);
   }
 
-  /* --- Tarjetas (Cards) --- */
+  /* --- Barra de Paciente / Sesión --- */
+  .patient-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 12px 25px;
+    border-radius: 4px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow-card);
+  }
+  .patient-info { display: flex; gap: 60px; flex-wrap: wrap; }
+  .p-item { display: flex; flex-direction: column; gap: 4px; }
+  .p-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .p-value { font-size: 0.9rem; color: var(--text-primary); font-weight: 500; font-family: var(--font-mono); }
+
+  /* --- Grid Dashboard para "Todos" --- */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); /* Responsivo: 1 o 2 columnas */
+    gap: 20px;
+  }
+  .dashboard-grid .card { margin-bottom: 0; } /* El grid maneja el margen */
+
+  /* --- Tarjetas --- */
   .card { 
     background: var(--bg-card); 
     padding: 20px; 
-    border-radius: 12px; 
+    border-radius: 6px; 
     margin-bottom: 25px; 
     border: 1px solid var(--border-color); 
     box-shadow: var(--shadow-card);
-    position: relative; 
+    position: relative;
+    display: flex; flex-direction: column;
   }
   
   h2 { 
-    margin-top: 0; 
-    margin-bottom: 15px;
-    font-size: 1.1rem; 
-    text-align: center; 
-    color: var(--text-secondary); 
-    font-weight: 400;
-    letter-spacing: 0.5px;
+    margin: 0 0 15px 0;
+    font-size: 0.9rem; 
+    text-align: left; 
+    color: var(--text-primary); 
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
   }
 
-  /* Botón de Cámara para capturar gráfica */
+  /* Métricas Limpias */
+  .stats-panel {
+    display: flex;
+    gap: 30px;
+    background: transparent; 
+    margin-bottom: 10px;
+    align-items: center;
+  }
+  .stat-item { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-val { font-family: var(--font-mono); font-size: 1rem; color: var(--text-primary); font-weight: 400; }
+  
   .camera-btn {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: color 0.2s;
-    z-index: 10;
+    background: transparent; border: none; color: var(--text-secondary);
+    font-size: 1rem; cursor: pointer; transition: all 0.2s; opacity: 0.7;
   }
-  .camera-btn:hover {
-    color: var(--accent-color);
-  }
+  .camera-btn:hover { color: var(--accent-color); opacity: 1; transform: scale(1.1); }
 
-  /* Contenedores de gráficas */
-  .chart-container {
-    position: relative;
-    height: 300px; 
-    width: 100%;
+  /* Instrucciones Grid */
+  .instructions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
   }
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .step-header { display: flex; align-items: center; gap: 12px; }
+  .step-number {
+    font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-color);
+    border: 1px solid var(--border-color); width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  }
+  .step-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px; }
+  .step-desc { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; }
+  .step-desc b { color: var(--text-primary); font-weight: 500;}
 
-  .chart-container-large {
-    position: relative;
-    height: 500px; 
-    width: 100%;
-  }
+  /* Gráficas */
+  .chart-container { position: relative; height: 250px; width: 100%; } /* Un poco más compacta para grid */
+  .chart-container-large { position: relative; height: 450px; width: 100%; }
 
-  /* --- Instrucciones --- */
-  .step-box { 
-    background: #000; 
-    color: var(--text-secondary); 
-    padding: 15px; 
-    border-radius: 6px; 
-    margin-bottom: 12px; 
-    font-size: 0.9rem;
-    border-left: 3px solid var(--border-color);
-    font-family: 'Courier New', Courier, monospace;
-  }
-  .step-box:hover {
-    border-left-color: var(--accent-color);
-    color: var(--text-primary);
-  }
-
-  .step-title { 
-    font-size: 1rem; 
-    font-weight: bold; 
-    color: var(--accent-color); 
-    margin-bottom: 5px; 
-    font-family: 'Segoe UI', sans-serif;
-  }
-
-  /* Scrollbar personalizado */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--bg-body); }
-  ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #555; }
 
-  /* --- RESPONSIVIDAD (Móvil) --- */
+  /* --- MODO DE IMPRESIÓN (Reporte Automático) --- */
+  @media print {
+    body { background: white; color: black; display: block; height: auto; overflow: visible; }
+    .menu, header, .menu-toggle, .camera-btn, .csv-btn { display: none !important; }
+    .main-container { margin: 0; height: auto; width: 100%; display: block; }
+    .content { padding: 0; width: 100%; overflow: visible; }
+    .card { 
+        border: 1px solid #ddd; 
+        box-shadow: none; 
+        background: white; 
+        page-break-inside: avoid; /* Evita cortar gráficas entre páginas */
+        margin-bottom: 20px;
+    }
+    h2 { color: black; border-bottom: 1px solid #ccc; }
+    .stat-val { color: black; }
+    .stat-label { color: #555; }
+    .patient-bar { border: 1px solid #ccc; background: white; color: black; }
+    .p-value { color: black; }
+    .instructions-grid { display: block; } /* Lista simple para imprimir */
+    .step-card { border: 1px solid #eee; margin-bottom: 10px; page-break-inside: avoid; }
+    .step-number { color: black; border-color: #ccc; }
+    .step-title, .step-desc, .step-desc b { color: black; }
+    
+    /* Forzar Grid a 2 columnas en papel si cabe */
+    .dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  }
+
   @media (max-width: 768px) {
     .menu-toggle { display: block; } 
-    header { font-size: 18px; text-align: left; justify-content: center; }
-    .csv-btn { padding: 6px 10px; font-size: 12px; }
-    .menu {
-      position: fixed; left: 0; top: 60px; height: calc(100vh - 60px);
-      z-index: 999; transform: translateX(-100%); 
-      box-shadow: 5px 0 15px rgba(0,0,0,0.5);
-    }
+    .menu { position: fixed; left: 0; top: 60px; height: calc(100vh - 60px); z-index: 999; transform: translateX(-100%); }
     .menu.open { transform: translateX(0); }
     .content { padding: 15px; }
-    .chart-container { height: 250px; }
-    .chart-container-large { height: 350px; }
+    .dashboard-grid { grid-template-columns: 1fr; } /* Columna única en móvil */
+    .chart-container-large { height: 300px; }
+    .patient-bar { display: none; }
+    .live-clock { display: none; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <button class="menu-toggle" onclick="toggleMenu()">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-  </button>
-  <span>Visor <span style="color:#fff;">ECG / PPG</span></span>
+  <div class="brand-area">
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+    <div class="brand">Visor<span>CLÍNICO</span></div>
+    <div class="live-clock" id="headerClock">--:--:--</div>
+  </div>
   
-  <button onclick="downloadCSV()" class="csv-btn">⬇ CSV</button>
+  <div class="header-controls">
+      <button onclick="downloadCSV()" class="csv-btn" title="Descargar datos actuales">
+        ⬇ CSV
+      </button>
+  </div>
 </header>
 
 <div class="main-container">
   <!-- Menú Lateral -->
   <div class="menu" id="sidebar">
-    <h3>Navegación</h3>
-    <button onclick="showPanel('instrucciones', this)" class="active">Instrucciones</button>
+    <div class="menu-section-title">Principal</div>
+    <button onclick="showPanel('instrucciones', this)" class="active">Protocolo</button>
+    <button onclick="showPanel('all_view', this)">Resumen General</button>
     
-    <h3>Vistas Generales</h3>
-    <button onclick="showPanel('all_view', this)">ECG y PPG (Todos)</button>
-    <button onclick="showPanel('ppg_view', this)">PPG (4 Canales)</button>
+    <div class="menu-section-title">Señales</div>
+    <button onclick="showPanel('ecg', this)">ECG </button>
+    <button onclick="showPanel('ppg_view', this)">Monitor PPG</button>
     
-    <h3>Vistas Individuales</h3>
-    <button onclick="showPanel('ecg', this)">ECG</button>
-    <button onclick="showPanel('ppg_manos', this)">PPG Manos</button>
-    <button onclick="showPanel('ppg_pies', this)">PPG Pies</button>
+    <div class="menu-section-title">Detalle</div>
+    <button onclick="showPanel('ppg_manos', this)">Manos</button>
+    <button onclick="showPanel('ppg_pies', this)">Pies</button>
     
-    <h3>Análisis Comparativo</h3>
-    <button onclick="showPanel('comp_manos', this)">Comparación Manos</button>
-    <button onclick="showPanel('comp_pies', this)">Comparación Pies</button>
+    <div class="menu-section-title">Comparación</div>
+    <button onclick="showPanel('comp_manos', this)">Manos</button>
+    <button onclick="showPanel('comp_pies', this)">Pies</button>
   </div>
 
-  <!-- Área de Contenido -->
+  <!-- Contenido -->
   <div class="content">
+    
+    <!-- Barra de Sesión -->
+    <div class="patient-bar">
+        <div class="patient-info">
+            <div class="p-item">
+                <span class="p-label">Frecuencia Muestreo</span>
+                <span class="p-value">200 Hz</span>
+            </div>
+            <div class="p-item">
+                <span class="p-label">Ventana Tiempo</span>
+                <span class="p-value">15 s</span>
+            </div>
+             <div class="p-item">
+                <span class="p-label">ADC</span>
+                <span class="p-value">16-bit</span>
+            </div>
+        </div>
+        <div class="p-item" style="text-align: right;">
+            <span class="p-label">Sesión</span>
+            <span class="p-value" id="sessionTime">--:--:--</span>
+        </div>
+    </div>
     
     <!-- Panel Instrucciones -->
     <div id="instrucciones" class="panel">
-      <h2 style="text-align: left; color: var(--accent-color); margin-bottom: 20px;">Protocolo de Inicio</h2>
-      <div class="step-box"><div class="step-title">01 / Alimentación</div>Conecte el dispositivo a una toma de corriente estable.</div>
-      <div class="step-box"><div class="step-title">02 / Encendido</div>Active los interruptores de Batería y Alimentación Principal.</div>
-      <div class="step-box"><div class="step-title">03 / Periféricos</div>Conecte monitor HDMI, teclado y mouse.</div>
-      <div class="step-box"><div class="step-title">04 / Sistema</div>Espere la carga completa de la interfaz de usuario.</div>
-      <div class="step-box"><div class="step-title">05 / Red</div>Establezca conexión vía WiFi o Ethernet (LAN).</div>
-      <div class="step-box"><div class="step-title">06 / Terminal</div>Abra la terminal de comandos.</div>
-      <div class="step-box"><div class="step-title">07 / Directorio</div>Ejecute: <b>cd Desktop/EAP</b></div>
-      <div class="step-box"><div class="step-title">08 / Sensores</div>Coloque electrodos ECG y sensores PPG al paciente.</div>
-      <div class="step-box"><div class="step-title">09 / Ejecución</div>Ejecute: <b>python3 eap.py</b></div>
-      <div class="step-box"><div class="step-title">10 / Captura</div>Adquiera datos por >15 segundos. Pulse "Detener" al finalizar.</div>
-      <div class="step-box"><div class="step-title">11 / Verificación</div>Confirme mensaje de "Transferencia Exitosa".</div>
-      <div class="step-box"><div class="step-title">12 / Visualización</div>Refresque esta página para cargar las nuevas señales.</div>
+      <div style="margin-bottom: 25px;">
+        <h1 style="font-size: 1.2rem; margin:0; font-weight:400; color:var(--text-primary); text-transform:uppercase; letter-spacing:1px;">Protocolo de Operación</h1>
+      </div>
+
+      <div class="instructions-grid">
+        <div class="step-card"><div class="step-header"><div class="step-number">01</div><div class="step-title">Alimentación</div></div><div class="step-desc">Conecte el dispositivo a un enchufe eléctrico.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">02</div><div class="step-title">Encendido</div></div><div class="step-desc">Encienda el switch de baterías y el de alimentación.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">03</div><div class="step-title">Periféricos</div></div><div class="step-desc">Conecte HDMI, Mouse y Teclado a las entradas del dispositivo.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">04</div><div class="step-title">Interfaz</div></div><div class="step-desc">Espere a que cargue el sistema.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">05</div><div class="step-title">Internet</div></div><div class="step-desc">En el ícono de Wi-fi en la esquina superior derecha conéctese a una red, o en caso de no tener acceso puede conectar un cable LAN al lado del puerto USB. </div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">06</div><div class="step-title">Terminal</div></div><div class="step-desc">Abra la terminal situada en la esquina superior izquierda.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">07</div><div class="step-title">Ruta</div></div><div class="step-desc">Escriba: <b>cd Desktop/EAP</b> y presione enter.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">08</div><div class="step-title">Paciente</div></div><div class="step-desc">Coloque electrodos y dedales según manual de usuario.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">09</div><div class="step-title">Ejecutar</div></div><div class="step-desc">Escriba seguido en la terminal: <b>python3 eap.py</b> y presione enter.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">10</div><div class="step-title">Medir</div></div><div class="step-desc">Adquiera datos mínimo durante 15 segundos, luego presione "detener".</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">11</div><div class="step-title">Confirmación</div></div><div class="step-desc">Verifique mensaje de transferencia exitosa.En caso de recibir mensaje de error, verificar conexión a internet.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">12</div><div class="step-title">Refrescar</div></div><div class="step-desc">Actualice esta página para ver los nuevos datos.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">13</div><div class="step-title">Datos</div></div><div class="step-desc">Presionar el botón CSV en la esquina superior derecha de la página en caso de querer descargar los datos adquiridos en formato excel.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">14</div><div class="step-title">Imágenes</div></div><div class="step-desc"> Presionar el símbolo de la cámara en la esquina superior derecha de las gráficas que se deseen descargar.</div></div>
+
+
+      </div>
     </div>
 
-    <!-- Panel ECG (GRANDE) -->
+    <!-- Panel ECG -->
     <div id="ecg" class="panel" style="display:none;">
       <div class="card">
-        <h2>Señal ECG en Tiempo Real</h2>
-        <button class="camera-btn" onclick="downloadImage('ecgChart')" title="Descargar Gráfica">📷</button>
+        <h2><span>Señal ECG</span><button class="camera-btn" onclick="downloadImage('ecgChart')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máx</span><span class="stat-val" id="ecg_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mín</span><span class="stat-val" id="ecg_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ecg_vpp">--</span></div>
+        </div>
         <div class="chart-container-large"><canvas id="ecgChart"></canvas></div>
       </div>
     </div>
 
-    <!-- Panel PPG Manos (GRANDE) -->
+    <!-- Panel PPG Manos -->
     <div id="ppg_manos" class="panel" style="display:none;">
       <div class="card">
-        <h2>PPG Índice Izquierdo</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg1')" title="Descargar Gráfica">📷</button>
+        <h2><span>PPG Índice Izquierdo</span><button class="camera-btn" onclick="downloadImage('ppg1')">📷</button></h2>
+         <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máx</span><span class="stat-val" id="ppg1_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mín</span><span class="stat-val" id="ppg1_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg1_vpp">--</span></div>
+        </div>
         <div class="chart-container-large"><canvas id="ppg1"></canvas></div>
       </div>
       <div class="card">
-        <h2>PPG Índice Derecho</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg2')" title="Descargar Gráfica">📷</button>
+        <h2><span>PPG Índice Derecho</span><button class="camera-btn" onclick="downloadImage('ppg2')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máx</span><span class="stat-val" id="ppg2_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mín</span><span class="stat-val" id="ppg2_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg2_vpp">--</span></div>
+        </div>
         <div class="chart-container-large"><canvas id="ppg2"></canvas></div>
       </div>
     </div>
 
-    <!-- Panel PPG Pies (GRANDE) -->
+    <!-- Panel PPG Pies -->
     <div id="ppg_pies" class="panel" style="display:none;">
       <div class="card">
-        <h2>PPG Hallux Izquierdo</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg3')" title="Descargar Gráfica">📷</button>
+        <h2><span>PPG Hallux Izquierdo</span><button class="camera-btn" onclick="downloadImage('ppg3')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máx</span><span class="stat-val" id="ppg3_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mín</span><span class="stat-val" id="ppg3_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg3_vpp">--</span></div>
+        </div>
         <div class="chart-container-large"><canvas id="ppg3"></canvas></div>
       </div>
       <div class="card">
-        <h2>PPG Hallux Derecho</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg4')" title="Descargar Gráfica">📷</button>
+        <h2><span>PPG Hallux Derecho</span><button class="camera-btn" onclick="downloadImage('ppg4')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máx</span><span class="stat-val" id="ppg4_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mín</span><span class="stat-val" id="ppg4_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg4_vpp">--</span></div>
+        </div>
         <div class="chart-container-large"><canvas id="ppg4"></canvas></div>
       </div>
     </div>
 
-    <!-- Panel Comparación Manos (GRANDE) -->
+    <!-- Panel Comparaciones -->
     <div id="comp_manos" class="panel" style="display:none;">
       <div class="card">
-        <h2>Comparativa Manos (Simultáneo)</h2>
-        <button class="camera-btn" onclick="downloadImage('compareManos')" title="Descargar Gráfica">📷</button>
+        <h2><span>Comparativa Manos</span><button class="camera-btn" onclick="downloadImage('compareManos')">📷</button></h2>
+        
+        <!-- Stats Comparativos NUEVOS -->
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Δ MÁX (Diff)</span><span class="stat-val" id="comp_manos_max_diff">--</span></div>
+            <div class="stat-item"><span class="stat-label">Δ PROM (Avg)</span><span class="stat-val" id="comp_manos_avg_diff">--</span></div>
+        </div>
+
         <div class="chart-container-large"><canvas id="compareManos"></canvas></div>
       </div>
     </div>
 
-    <!-- Panel Comparación Pies (GRANDE) -->
     <div id="comp_pies" class="panel" style="display:none;">
       <div class="card">
-        <h2>Comparativa Pies (Simultáneo)</h2>
-        <button class="camera-btn" onclick="downloadImage('comparePies')" title="Descargar Gráfica">📷</button>
+        <h2><span>Comparativa Pies</span><button class="camera-btn" onclick="downloadImage('comparePies')">📷</button></h2>
+        
+        <!-- Stats Comparativos NUEVOS -->
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Δ MÁX (Diff)</span><span class="stat-val" id="comp_pies_max_diff">--</span></div>
+            <div class="stat-item"><span class="stat-label">Δ PROM (Avg)</span><span class="stat-val" id="comp_pies_avg_diff">--</span></div>
+        </div>
+
         <div class="chart-container-large"><canvas id="comparePies"></canvas></div>
       </div>
     </div>
 
-    <!-- Panel TODOS -->
+    <!-- Panel Resumen (GRID LAYOUT) -->
     <div id="all_view" class="panel" style="display:none;">
-      <h2 style="color:var(--text-primary); margin-bottom: 25px;">Monitor Multicanal Completo</h2>
-      <div class="card">
-        <h2>Canal 1: ECG</h2>
-        <button class="camera-btn" onclick="downloadImage('all_c1')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="all_c1"></canvas></div>
-      </div>
-      <div class="card">
-        <h2>Canal 2: PPG Índice Izq</h2>
-        <button class="camera-btn" onclick="downloadImage('all_c2')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="all_c2"></canvas></div>
-      </div>
-      <div class="card">
-        <h2>Canal 3: PPG Índice Der</h2>
-        <button class="camera-btn" onclick="downloadImage('all_c3')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="all_c3"></canvas></div>
-      </div>
-      <div class="card">
-        <h2>Canal 4: PPG Hallux Izq</h2>
-        <button class="camera-btn" onclick="downloadImage('all_c4')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="all_c4"></canvas></div>
-      </div>
-      <div class="card">
-        <h2>Canal 5: PPG Hallux Der</h2>
-        <button class="camera-btn" onclick="downloadImage('all_c5')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="all_c5"></canvas></div>
+      <h2 style="border:none; color:var(--text-primary); margin-bottom: 20px;">Resumen Clínico</h2>
+      <div class="dashboard-grid">
+          <div class="card"><h2><span>ECG</span><button class="camera-btn" onclick="downloadImage('all_c1')">📷</button></h2><div class="chart-container"><canvas id="all_c1"></canvas></div></div>
+          <div class="card"><h2><span>PPG Ind Izq</span><button class="camera-btn" onclick="downloadImage('all_c2')">📷</button></h2><div class="chart-container"><canvas id="all_c2"></canvas></div></div>
+          <div class="card"><h2><span>PPG Ind Der</span><button class="camera-btn" onclick="downloadImage('all_c3')">📷</button></h2><div class="chart-container"><canvas id="all_c3"></canvas></div></div>
+          <div class="card"><h2><span>PPG Pie Izq</span><button class="camera-btn" onclick="downloadImage('all_c4')">📷</button></h2><div class="chart-container"><canvas id="all_c4"></canvas></div></div>
+          <div class="card"><h2><span>PPG Pie Der</span><button class="camera-btn" onclick="downloadImage('all_c5')">📷</button></h2><div class="chart-container"><canvas id="all_c5"></canvas></div></div>
       </div>
     </div>
 
-    <!-- Panel SOLO PPG -->
+    <!-- Panel SOLO PPG (GRID LAYOUT) -->
     <div id="ppg_view" class="panel" style="display:none;">
-      <h2 style="color:var(--text-primary); margin-bottom: 25px;">Monitor de Fotopletismografía (4 Canales)</h2>
-      <div class="card">
-        <h2>PPG Índice Izq</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg_only_c2')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="ppg_only_c2"></canvas></div>
-      </div>
-      <div class="card">
-        <h2>PPG Índice Der</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg_only_c3')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="ppg_only_c3"></canvas></div>
-      </div>
-      <div class="card">
-        <h2>PPG Hallux Izq</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg_only_c4')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="ppg_only_c4"></canvas></div>
-      </div>
-      <div class="card">
-        <h2>PPG Hallux Der</h2>
-        <button class="camera-btn" onclick="downloadImage('ppg_only_c5')" title="Descargar Gráfica">📷</button>
-        <div class="chart-container"><canvas id="ppg_only_c5"></canvas></div>
+      <h2 style="border:none; color:var(--text-primary); margin-bottom: 20px;">Monitor PPG (4 Canales)</h2>
+      <div class="dashboard-grid">
+          <div class="card"><h2><span>PPG Índice Izq</span><button class="camera-btn" onclick="downloadImage('ppg_only_c2')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c2"></canvas></div></div>
+          <div class="card"><h2><span>PPG Índice Der</span><button class="camera-btn" onclick="downloadImage('ppg_only_c3')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c3"></canvas></div></div>
+          <div class="card"><h2><span>PPG Hallux Izq</span><button class="camera-btn" onclick="downloadImage('ppg_only_c4')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c4"></canvas></div></div>
+          <div class="card"><h2><span>PPG Hallux Der</span><button class="camera-btn" onclick="downloadImage('ppg_only_c5')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c5"></canvas></div></div>
       </div>
     </div>
 
@@ -435,118 +518,140 @@
 </div>
 
 <script>
-// --- Configuración Global ---
 const FIREBASE_URL = 'https://practicumii-a9956-default-rtdb.firebaseio.com/ad7606.json';
 const SAMPLE_RATE = 200;  
 const SECONDS_TO_SHOW = 15; 
 const BUFFER_SIZE = SAMPLE_RATE * SECONDS_TO_SHOW; 
 
 let charts = {}; 
-let globalData = {}; // Almacenamiento para CSV
+let globalData = {}; 
+let isPaused = false; 
 
-// --- PLUGIN: Fondo GRIS en la descarga (Dark Mode) ---
+// Reloj
+setInterval(() => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('es-MX');
+    document.getElementById('sessionTime').innerText = timeStr;
+    document.getElementById('headerClock').innerText = timeStr;
+}, 1000);
+
+// Plugin fondo
 const backgroundPlugin = {
   id: 'customCanvasBackgroundColor',
   beforeDraw: (chart, args, options) => {
     const {ctx} = chart;
     ctx.save();
     ctx.globalCompositeOperation = 'destination-over';
-    ctx.fillStyle = '#1e1e1e'; // Fondo oscuro de las tarjetas
+    ctx.fillStyle = '#141414'; 
     ctx.fillRect(0, 0, chart.width, chart.height);
     ctx.restore();
   }
 };
 Chart.register(backgroundPlugin);
 
-// --- Funciones UI ---
-function toggleMenu() {
-  document.getElementById('sidebar').classList.toggle('open');
-}
+function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); }
 
 function showPanel(id, btn) {
   document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-  document.getElementById(id).style.display = 'block';
+  const panel = document.getElementById(id);
+  panel.style.display = 'block';
   
   if (btn) {
     document.querySelectorAll('.menu button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
-
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.remove('open');
-  }
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
 }
 
-// --- Función para Descargar IMAGEN de la Gráfica (Español) ---
+function togglePause() {
+    isPaused = !isPaused;
+    const btn = document.getElementById('pauseBtn');
+    if(isPaused) {
+        btn.classList.add('active-state');
+        btn.innerHTML = '▶ Reanudar';
+    } else {
+        btn.classList.remove('active-state');
+        btn.innerHTML = '⏸ Congelar';
+        loadData(); 
+    }
+}
+
 function downloadImage(chartId) {
   const canvas = document.getElementById(chartId);
   const link = document.createElement('a');
-  
-  // Mapa de nombres en español
-  const nombresArchivos = {
-    'ecgChart': 'senal_ecg',
-    'ppg1': 'ppg_indice_izquierdo',
-    'ppg2': 'ppg_indice_derecho',
-    'ppg3': 'ppg_hallux_izquierdo',
-    'ppg4': 'ppg_hallux_derecho',
-    'compareManos': 'comparacion_manos',
-    'comparePies': 'comparacion_pies',
-    'all_c1': 'ecg_general',
-    'all_c2': 'ppg_indice_izq_general',
-    'all_c3': 'ppg_indice_der_general',
-    'all_c4': 'ppg_hallux_izq_general',
-    'all_c5': 'ppg_hallux_der_general',
-    'ppg_only_c2': 'ppg_indice_izq_vista_ppg',
-    'ppg_only_c3': 'ppg_indice_der_vista_ppg',
-    'ppg_only_c4': 'ppg_hallux_izq_vista_ppg',
-    'ppg_only_c5': 'ppg_hallux_der_vista_ppg'
-  };
-
-  const nombreFinal = nombresArchivos[chartId] || 'grafica';
-  link.download = `${nombreFinal}.png`;
+  link.download = `registro_clinico_${chartId}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
 
-// --- Función para Descargar CSV ---
 function downloadCSV() {
-    if (!globalData.CH1) { alert("Espera a que carguen los datos para descargar."); return; }
-    
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Tiempo(s),ECG,PPG_Ind_Izq,PPG_Ind_Der,PPG_Pie_Izq,PPG_Pie_Der\n";
-
+    if (!globalData.CH1) { alert("Cargando datos..."); return; }
+    let csvContent = "data:text/csv;charset=utf-8,Tiempo(s),ECG,PPG_Ind_Izq,PPG_Ind_Der,PPG_Pie_Izq,PPG_Pie_Der\n";
     const len = globalData.CH1.length;
     for(let i = 0; i < len; i++) {
         const t = (i / SAMPLE_RATE).toFixed(3);
-        const row = [
-            t, 
-            globalData.CH1[i],
-            globalData.CH2[i],
-            globalData.CH3[i],
-            globalData.CH4[i],
-            globalData.CH5[i]
-        ].join(",");
+        const row = [t, globalData.CH1[i], globalData.CH2[i], globalData.CH3[i], globalData.CH4[i], globalData.CH5[i]].join(",");
         csvContent += row + "\r\n";
     }
-
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "biosenales_" + new Date().getTime() + ".csv");
+    link.setAttribute("download", "registro_clinico_" + new Date().getTime() + ".csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-// --- Lógica de Datos y Gráficas ---
+// Estadísticas Individuales
+function updateStats(prefix, data) {
+    if (!data || data.length === 0) return;
+    let max = -Infinity;
+    let min = Infinity;
+    for (let i = 0; i < data.length; i++) {
+        if (data[i] > max) max = data[i];
+        if (data[i] < min) min = data[i];
+    }
+    const vpp = max - min;
+
+    const elMax = document.getElementById(`${prefix}_max`);
+    const elMin = document.getElementById(`${prefix}_min`);
+    const elVpp = document.getElementById(`${prefix}_vpp`);
+
+    if (elMax) elMax.innerText = max.toFixed(3);
+    if (elMin) elMin.innerText = min.toFixed(3);
+    if (elVpp) elVpp.innerText = vpp.toFixed(3);
+}
+
+// Estadísticas Comparativas (NUEVO)
+function updateComparisonStats(prefix, data1, data2) {
+    if (!data1 || !data2 || data1.length === 0 || data2.length === 0) return;
+    
+    let maxDiff = 0;
+    let totalDiff = 0;
+    const len = Math.min(data1.length, data2.length);
+
+    for (let i = 0; i < len; i++) {
+        const diff = Math.abs(data1[i] - data2[i]);
+        if (diff > maxDiff) maxDiff = diff;
+        totalDiff += diff;
+    }
+    const avgDiff = totalDiff / len;
+
+    const elMaxDiff = document.getElementById(`${prefix}_max_diff`);
+    const elAvgDiff = document.getElementById(`${prefix}_avg_diff`);
+
+    if (elMaxDiff) elMaxDiff.innerText = maxDiff.toFixed(3);
+    if (elAvgDiff) elAvgDiff.innerText = avgDiff.toFixed(3);
+}
+
 async function loadData() {
+  if (isPaused) return; 
+
   try {
     const res = await fetch(FIREBASE_URL);
     const data = await res.json();
-
     if (!data) return;
 
-    // Procesar datos
     const ecg = sliceData(data.CH1);
     const ppgIzqMano = sliceData(data.CH2);
     const ppgDerMano = sliceData(data.CH3);
@@ -555,43 +660,51 @@ async function loadData() {
 
     globalData = { CH1: ecg, CH2: ppgIzqMano, CH3: ppgDerMano, CH4: ppgIzqPie, CH5: ppgDerPie };
 
+    // Stats Individuales
+    updateStats('ecg', ecg);
+    updateStats('ppg1', ppgIzqMano);
+    updateStats('ppg2', ppgDerMano);
+    updateStats('ppg3', ppgIzqPie);
+    updateStats('ppg4', ppgDerPie);
+
+    // Stats Comparativos
+    updateComparisonStats('comp_manos', ppgIzqMano, ppgDerMano);
+    updateComparisonStats('comp_pies', ppgIzqPie, ppgDerPie);
+
     const labels = Array.from({length: ecg.length}, (_, i) => (i / SAMPLE_RATE));
 
-    // Colores Neon Modernos
     const colRed = '#ff5252'; 
     const colBlue = '#448aff';
     const colGreen = '#69f0ae';
+    const draw = (id, lbls, datasets) => renderChart(id, lbls, datasets);
 
-    renderChart('ecgChart', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
-    renderChart('ppg1', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
-    renderChart('ppg2', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
-    renderChart('ppg3', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
-    renderChart('ppg4', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
+    draw('ecgChart', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
+    draw('ppg1', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
+    draw('ppg2', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
+    draw('ppg3', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
+    draw('ppg4', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
 
-    renderChart('compareManos', labels, [
+    draw('compareManos', labels, [
       { label: 'Índice Izq', data: ppgIzqMano, color: colBlue },
       { label: 'Índice Der', data: ppgDerMano, color: colGreen }
     ]);
-
-    renderChart('comparePies', labels, [
+    draw('comparePies', labels, [
       { label: 'Hallux Izq', data: ppgIzqPie, color: colBlue },
       { label: 'Hallux Der', data: ppgDerPie, color: colGreen }
     ]);
 
-    renderChart('all_c1', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
-    renderChart('all_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
-    renderChart('all_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
-    renderChart('all_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
-    renderChart('all_c5', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
+    draw('all_c1', labels, [{ label: 'ECG', data: ecg, color: colRed }]);
+    draw('all_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
+    draw('all_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
+    draw('all_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
+    draw('all_c5', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
 
-    renderChart('ppg_only_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
-    renderChart('ppg_only_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
-    renderChart('ppg_only_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
-    renderChart('ppg_only_c5', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
+    draw('ppg_only_c2', labels, [{ label: 'Índice Izq', data: ppgIzqMano, color: colRed }]);
+    draw('ppg_only_c3', labels, [{ label: 'Índice Der', data: ppgDerMano, color: colRed }]);
+    draw('ppg_only_c4', labels, [{ label: 'Hallux Izq', data: ppgIzqPie, color: colRed }]);
+    draw('ppg_only_c5', labels, [{ label: 'Hallux Der', data: ppgDerPie, color: colRed }]);
 
-  } catch (error) {
-    console.error("Error cargando datos:", error);
-  }
+  } catch (error) { console.error("Error:", error); }
 }
 
 function sliceData(arr) {
@@ -601,70 +714,60 @@ function sliceData(arr) {
 
 function renderChart(canvasId, labels, datasets) {
   const ctx = document.getElementById(canvasId).getContext('2d');
-
-  if (charts[canvasId]) {
-    charts[canvasId].destroy();
-  }
+  if (charts[canvasId]) charts[canvasId].destroy();
 
   const chartDatasets = datasets.map(ds => ({
     label: ds.label,
     data: ds.data,
     borderColor: ds.color,
     backgroundColor: ds.color,
-    borderWidth: 2, 
+    borderWidth: 1.5,
     pointRadius: 0, 
-    fill: false,
-    tension: 0.2
+    fill: false, 
+    tension: 0.1,
+    pointHoverRadius: 4
   }));
 
   charts[canvasId] = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: labels,
-      datasets: chartDatasets
-    },
+    data: { labels: labels, datasets: chartDatasets },
     options: {
       responsive: true,
       maintainAspectRatio: false, 
       animation: false, 
-      interaction: {
-        mode: 'index',
-        intersect: false,
-      },
+      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: true, labels: { color: '#e0e0e0' } },
-        // Fondo gris para descarga en modo oscuro
-        customCanvasBackgroundColor: {
-          color: '#1e1e1e',
-        }
+        legend: { display: true, labels: { color: '#888888', font: {family: "'Segoe UI', sans-serif", size: 11} } },
+        tooltip: {
+            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+            titleColor: '#e0e0e0',
+            bodyColor: '#e0e0e0',
+            borderColor: '#333',
+            borderWidth: 1,
+            titleFont: { family: 'Consolas' },
+            bodyFont: { family: 'Consolas' },
+            callbacks: { label: (ctx) => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(3) + ' V' }
+        },
+        customCanvasBackgroundColor: { color: '#141414' }
       },
       scales: {
         x: {
           display: true,
           type: 'linear', 
-          title: { display: true, text: 'Tiempo (s)', color: '#a0a0a0' },
-          ticks: { maxTicksLimit: 15, stepSize: 1, color: '#808080' },
-          grid: { color: '#333' } 
+          ticks: { maxTicksLimit: 15, stepSize: 1, color: '#444444', font: { family: 'Consolas', size: 10 } },
+          grid: { color: 'rgba(255, 255, 255, 0.03)', borderDash: [2, 2] } 
         },
         y: {
           display: true,
-          title: { 
-            display: true, 
-            text: 'Voltaje (V)',
-            font: { weight: 'bold' },
-            color: '#a0a0a0'
-          },
-          ticks: { color: '#808080' },
-          grid: { color: '#333' }, 
-          beginAtZero: false
+          title: { display: true, text: 'Voltaje (V)', font: { weight: '500', size:10 }, color: '#444444' },
+          ticks: { color: '#444444', font: { family: 'Consolas', size: 10 } },
+          grid: { color: 'rgba(255, 255, 255, 0.03)', borderDash: [2, 2] }
         }
       }
     }
   });
 }
-
 loadData();
-
 </script>
 </body>
 </html>
