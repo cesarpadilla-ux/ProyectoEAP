@@ -18,7 +18,7 @@
     --text-secondary: #64748b;
     --text-muted: #94a3b8;    
     
-    --accent-color: #059669 ;  
+    --accent-color: #059669;  
     --accent-dim: rgba(5, 150, 105, 0.1);
     
     --border-color: #e2e8f0;  
@@ -30,7 +30,6 @@
     --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 
-  /* --- Estilos Base  */
   body { 
     background: var(--bg-body); 
     color: var(--text-primary);
@@ -87,23 +86,6 @@
     font-size: 24px; cursor: pointer; display: none; margin-right: 15px;
   }
 
-  /* ----Botones de interacción */
-  .action-btn {
-    background: white;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    padding: 6px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.2s ease;
-    display: flex; align-items: center; gap: 8px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  }
-  
   .csv-btn {
     background: var(--text-primary); 
     color: white;
@@ -373,7 +355,7 @@
             </div>
             <div class="p-item">
                 <span class="p-label">Ventana Tiempo</span>
-                <span class="p-value">15 s</span>
+                <span class="p-value">15 s (Deslizante)</span>
             </div>
              <div class="p-item">
                 <span class="p-label">ADC</span>
@@ -488,12 +470,6 @@
     <div id="all_view" class="panel" style="display:none;">
       <h2 style="border:none; color:var(--text-primary); margin-bottom: 20px;">Resumen Clínico</h2>
       
-      <div class="card" style="margin-bottom: 30px; border-left: 4px solid var(--accent-color);">
-        <h2><span>Monitor Unificado (Todas las señales)</span><button class="camera-btn" onclick="downloadImage('graficaECG')">📷</button></h2>
-        <div class="chart-container-large">
-             <canvas id="graficaECG"></canvas>
-        </div>
-      </div>
       <div class="dashboard-grid">
           <div class="card"><h2><span>ECG</span><button class="camera-btn" onclick="downloadImage('all_c1')">📷</button></h2><div class="chart-container"><canvas id="all_c1"></canvas></div></div>
           <div class="card"><h2><span>PPG Ind Izq</span><button class="camera-btn" onclick="downloadImage('all_c2')">📷</button></h2><div class="chart-container"><canvas id="all_c2"></canvas></div></div>
@@ -527,37 +503,10 @@ let charts = {};
 let globalData = {}; 
 let isPaused = false; 
 
-// --- Configuración del Snippet Solicitado (Buffer Local) ---
+// Buffer local para acumular datos y para el CSV
 let localData = {
-  CH1: [],
-  CH2: [],
-  CH3: [],
-  CH4: [],
-  CH5: []
+  CH1: [], CH2: [], CH3: [], CH4: [], CH5: []
 };
-
-// Inicialización de la Gráfica Unificada (Del Snippet)
-const ctxMulti = document.getElementById("graficaECG").getContext("2d");
-const multiChart = new Chart(ctxMulti, {
-  type: "line",
-  data: {
-    labels: [],
-    datasets: [
-      { label: "ECG (CH1)", data: [], borderWidth: 1, borderColor: '#319ed4', pointRadius: 0 },
-      { label: "Ind Izq (CH2)", data: [], borderWidth: 1, borderColor: '#2362ab', pointRadius: 0 },
-      { label: "Ind Der (CH3)", data: [], borderWidth: 1, borderColor: '#8a8bd6', pointRadius: 0 },
-      { label: "Pie Izq (CH4)", data: [], borderWidth: 1, borderColor: '#4e4589', pointRadius: 0 },
-      { label: "Pie Der (CH5)", data: [], borderWidth: 1, borderColor: '#2e9696', pointRadius: 0 },
-    ]
-  },
-  options: { 
-    animation: false,
-    responsive: true,
-    maintainAspectRatio: false,
-    elements: { line: { tension: 0.1 } },
-    scales: { x: { display: false } } // Optimización del snippet
-  }
-});
 
 // Reloj
 setInterval(() => {
@@ -567,7 +516,7 @@ setInterval(() => {
     document.getElementById('headerClock').innerText = timeStr;
 }, 1000);
 
-// Plugin fondo BLANCO para descargas Light Mode
+// Plugin fondo BLANCO
 const backgroundPlugin = {
   id: 'customCanvasBackgroundColor',
   beforeDraw: (chart, args, options) => {
@@ -587,7 +536,6 @@ function showPanel(id, btn) {
   document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
   const panel = document.getElementById(id);
   panel.style.display = 'block';
-  
   if (btn) {
     document.querySelectorAll('.menu button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -611,10 +559,8 @@ function downloadImage(chartId) {
     'all_c2': 'ppg_indice_izq_general',
     'all_c3': 'ppg_indice_der_general',
     'all_c4': 'ppg_hallux_izq_general',
-    'all_c5': 'ppg_hallux_der_general',
-    'graficaECG': 'monitor_unificado_raw'
+    'all_c5': 'ppg_hallux_der_general'
   };
-
   const nombreFinal = nombresArchivos[chartId] || 'grafica';
   link.download = `${nombreFinal}.png`;
   link.href = canvas.toDataURL('image/png');
@@ -622,12 +568,10 @@ function downloadImage(chartId) {
 }
 
 function downloadCSV() {
-    // Usamos localData para descargar todo el historial disponible
     if (!localData.CH1 || localData.CH1.length === 0) { alert("Cargando datos o sin datos..."); return; }
     let csvContent = "data:text/csv;charset=utf-8,Muestra,ECG,PPG_Ind_Izq,PPG_Ind_Der,PPG_Pie_Izq,PPG_Pie_Der\n";
     const len = localData.CH1.length;
     for(let i = 0; i < len; i++) {
-        // Usamos indice simple o tiempo calculado
         const t = (i / SAMPLE_RATE).toFixed(3);
         const row = [t, localData.CH1[i], localData.CH2[i], localData.CH3[i], localData.CH4[i], localData.CH5[i]].join(",");
         csvContent += row + "\r\n";
@@ -676,7 +620,7 @@ function updateComparisonStats(prefix, data1, data2) {
     if (elAvgDiff) elAvgDiff.innerText = avgDiff.toFixed(3);
 }
 
-// --- FUNCIÓN PRINCIPAL DE ACTUALIZACIÓN (Reemplaza loadData con lógica del snippet) ---
+// --- LÓGICA DE ACTUALIZACIÓN ---
 async function updateData() {
   if (isPaused) return; 
 
@@ -685,45 +629,44 @@ async function updateData() {
     const fb = await res.json();
     if (!fb) return;
 
-    // 1. Lógica del Snippet: Acumular datos en buffer local y actualizar gráfica unificada
-    let hasNewData = false;
-    ["CH1","CH2","CH3","CH4","CH5"].forEach((ch, index) => {
-        const newData = fb[ch] || [];
-        const prevLen = localData[ch].length;
-        const newLen = newData.length;
-
-        if (newLen > prevLen) {
-            hasNewData = true;
-            const diff = newData.slice(prevLen);
-            localData[ch].push(...diff);
-            // Actualizar la gráfica unificada (del snippet)
-            multiChart.data.datasets[index].data.push(...diff);
-        }
-    });
-
-    if (hasNewData) {
-        // Actualizar labels de la gráfica unificada
-        const longest = localData["CH1"].length;
-        // Evitamos crear array gigante si no es necesario para display X axis
-        if (multiChart.data.labels.length < longest) {
-            // Solo llenar si cambió drásticamente, o usar truco del snippet
-            // El snippet usa .fill("") lo cual es ligero
-            if(longest < 5000) multiChart.data.labels = Array(longest).fill(""); 
-        }
-        multiChart.update();
+    // 1. Detectar muestras nuevas para el Buffer Local (para CSV y conteo total)
+    // Usamos CH1 como referencia de longitud
+    const incomingLen = fb.CH1 ? fb.CH1.length : 0;
+    const currentLen = localData.CH1.length;
+    
+    if (incomingLen > currentLen) {
+         // Si hay datos nuevos en la nube que no tenemos localmente, los copiamos
+         // Esto asume que Firebase tiene TODO el historial.
+         // Si Firebase solo tiene una ventana, esta lógica cambia, pero asumimos el comportamiento standard.
+         ["CH1","CH2","CH3","CH4","CH5"].forEach(ch => {
+             // Simplemente reemplazamos localData con lo que hay en Firebase para asegurar consistencia
+             // Si quieres optimizar ancho de banda a futuro, se haría slice, pero aquí aseguramos sincronía.
+             localData[ch] = fb[ch] || [];
+         });
     }
 
-    // 2. Lógica de la Interfaz Original: Ventana deslizante de 15s
-    // Para mantener el rendimiento de la UI original, cortamos los datos desde localData
-    // o usamos directamente el array de firebase (fb) como hacía el original.
+    // 2. Preparar ventana de visualización (últimos 15 seg)
+    const ecg = sliceData(localData.CH1);
+    const ppgIzqMano = sliceData(localData.CH2);
+    const ppgDerMano = sliceData(localData.CH3);
+    const ppgIzqPie = sliceData(localData.CH4);
+    const ppgDerPie = sliceData(localData.CH5);
+
+    // 3. CALCULAR EL EJE DE TIEMPO DINÁMICO
+    // Si tenemos 5000 muestras totales y mostramos las ultimas 3000 (15s a 200hz)
+    // El inicio es la muestra 2000 (10 seg) y el fin es 5000 (25 seg)
+    const totalSamples = localData.CH1.length;
+    // Indice donde empieza la ventana actual
+    let startIndex = totalSamples - BUFFER_SIZE; 
+    if (startIndex < 0) startIndex = 0;
     
-    // Usamos sliceData sobre la data completa recibida (fb) o localData, es igual.
-    // Usaremos fb para asegurar sincronía con el fetch actual.
-    const ecg = sliceData(fb.CH1);
-    const ppgIzqMano = sliceData(fb.CH2);
-    const ppgDerMano = sliceData(fb.CH3);
-    const ppgIzqPie = sliceData(fb.CH4);
-    const ppgDerPie = sliceData(fb.CH5);
+    // Generamos etiquetas de tiempo basadas en el indice real
+    // Tiempo = indice / SampleRate
+    const labels = [];
+    for(let i = 0; i < ecg.length; i++) {
+        const timeInSeconds = (startIndex + i) / SAMPLE_RATE;
+        labels.push(timeInSeconds.toFixed(1)); // "10.5", "10.6", etc.
+    }
 
     globalData = { CH1: ecg, CH2: ppgIzqMano, CH3: ppgDerMano, CH4: ppgIzqPie, CH5: ppgDerPie };
 
@@ -736,9 +679,7 @@ async function updateData() {
     updateComparisonStats('comp_manos', ppgIzqMano, ppgDerMano);
     updateComparisonStats('comp_pies', ppgIzqPie, ppgDerPie);
 
-    // Renderizar Gráficas Originales (Estilo Dashboard)
-    const labels = Array.from({length: ecg.length}, (_, i) => (i / SAMPLE_RATE));
-
+    // Colores
     const colECG  = '#319ed4'; 
     const colPPG1 = '#2362ab'; 
     const colPPG2 = '#8a8bd6'; 
@@ -822,9 +763,13 @@ function renderChart(canvasId, labels, datasets) {
       scales: {
         x: {
           display: true,
-          type: 'linear', 
+          type: 'category', // Usamos category para manejar etiquetas personalizadas de tiempo
           title: { display: true, text: 'Tiempo (s)', color: '#6b7280', font:{size:11, weight:'bold'} },
-          ticks: { maxTicksLimit: 15, stepSize: 1, color: '#6b7280', font: { family: 'Consolas', size: 10 } },
+          ticks: { 
+              maxTicksLimit: 15, 
+              color: '#6b7280', 
+              font: { family: 'Consolas', size: 10 }
+          },
           grid: { color: '#e5e7eb', borderDash: [2, 2] } 
         },
         y: {
@@ -838,8 +783,8 @@ function renderChart(canvasId, labels, datasets) {
   });
 }
 
-// Iniciar el bucle de actualización (del snippet)
-setInterval(updateData, 2000);
+// 🔥 ACTUALIZACIÓN AUTOMÁTICA CADA 0.5s (500ms)
+setInterval(updateData, 500);
 </script>
 </body>
 </html>
