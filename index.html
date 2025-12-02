@@ -6,7 +6,7 @@
 <title>Vessel View ECG / PPG</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  /* --- ESTILOS VISUALES IDÉNTICOS A TU ORIGINAL --- */
+
   :root {
     --bg-body: #f8f9fa; --bg-sidebar: #ffffff; --bg-card: #ffffff;
     --text-primary: #1f2937; --text-secondary: #64748b; --text-muted: #94a3b8;
@@ -121,9 +121,8 @@
         <div class="step-card"><div class="step-header"><div class="step-number">07</div><div class="step-title">Ruta</div></div><div class="step-desc">Escriba: <b>cd Desktop/EAP</b> y presione enter.</div></div>
         <div class="step-card"><div class="step-header"><div class="step-number">08</div><div class="step-title">Paciente</div></div><div class="step-desc">Coloque electrodos y dedales según manual de usuario.</div></div>
         <div class="step-card"><div class="step-header"><div class="step-number">09</div><div class="step-title">Ejecutar</div></div><div class="step-desc">Escriba seguido en la terminal: <b>python3 eap.py</b> y presione enter.</div></div>
-        <div class="step-card"><div class="step-header"><div class="step-number">10</div><div class="step-title">Medir</div></div><div class="step-desc">Adquiera datos mínimo durante 15 segundos, luego presione "detener".</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">10</div><div class="step-title">Medir</div></div><div class="step-desc"> Observe la información y detenga el programa con el botón "detener" desplegado en la Raspberry cuando obtenga la información deseada.</div></div>
         <div class="step-card"><div class="step-header"><div class="step-number">11</div><div class="step-title">Confirmación</div></div><div class="step-desc">Verifique mensaje de transferencia exitosa. En caso de recibir mensaje de error, verificar conexión a internet.</div></div>
-        <div class="step-card"><div class="step-header"><div class="step-number">12</div><div class="step-title">Refrescar</div></div><div class="step-desc">Actualice esta página para ver los nuevos datos.</div></div>
         <div class="step-card"><div class="step-header"><div class="step-number">13</div><div class="step-title">Datos</div></div><div class="step-desc">Presionar el botón CSV en la esquina superior derecha de la página en caso de querer descargar los datos adquiridos en formato excel.</div></div>
         <div class="step-card"><div class="step-header"><div class="step-number">14</div><div class="step-title">Imágenes</div></div><div class="step-desc"> Presionar el símbolo de la cámara en la esquina superior derecha de las gráficas que se deseen descargar.</div></div>
       </div>
@@ -228,7 +227,7 @@
 </div>
 
 <script>
-// --- CONFIGURACIÓN ---
+// --- CONFIGURACIÓN 
 const FIREBASE_URL = 'https://practicumii-a9956-default-rtdb.firebaseio.com/ad7606.json';
 const SAMPLE_RATE = 200;
 let charts = {};
@@ -315,7 +314,7 @@ function updateComp(p, d1, d2) {
     if(eM)eM.innerText=mD.toFixed(3); if(eA)eA.innerText=(tD/len).toFixed(3);
 }
 
-// --- ACTUALIZACIÓN PRINCIPAL ---
+// --- ACTUALIZACIÓN PRINCIPAL DE DATOS 
 async function updateData() {
   if(isPaused) return;
   try {
@@ -340,8 +339,7 @@ async function updateData() {
 
     const labels = [];
     // Generamos etiquetas para los 3000 puntos que vienen de Firebase
-    // Si al principio hay menos de 3000 muestras reales, igual graficamos en el tiempo correcto
-    // alineado a la derecha.
+  
     const points = ecg.length; 
     // Empezamos a etiquetar desde (endTime - duración del buffer recibido)
     const bufferDuration = points / SAMPLE_RATE;
@@ -410,7 +408,7 @@ function renderChart(id, lbs, dsets) {
                     },
                     y: { 
                         display: true, 
-                        // --- AQUÍ ESTÁ LA ETIQUETA DE VOLTAJE QUE FALTABA ---
+                      
                         title: { display: true, text: 'Voltaje (V)', color:'#6b7280', font:{size:10, weight:'bold'} },
                         ticks: { color: '#6b7280' }, 
                         grid: { color: '#e5e7eb' } 
