@@ -6,7 +6,7 @@
 <title>Vessel View ECG / PPG</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  /* --- ESTILOS VISUALES ORIGINALES --- */
+  /* --- ESTILOS VISUALES IDÉNTICOS A TU ORIGINAL --- */
   :root {
     --bg-body: #f8f9fa; --bg-sidebar: #ffffff; --bg-card: #ffffff;
     --text-primary: #1f2937; --text-secondary: #64748b; --text-muted: #94a3b8;
@@ -223,10 +223,9 @@ const FIREBASE_URL = 'https://practicumii-a9956-default-rtdb.firebaseio.com/ad76
 const SAMPLE_RATE = 200;
 let charts = {};
 let isPaused = false;
-let csvDataBuffer = { CH1: [], CH2: [], CH3: [], CH4: [], CH5: [] }; // Para descarga CSV
-let latestFirebaseTotal = 0; // Para sincronización de CSV
+let csvDataBuffer = { CH1: [], CH2: [], CH3: [], CH4: [], CH5: [] };
+let latestFirebaseTotal = 0;
 
-// Reloj
 setInterval(() => {
     const now = new Date();
     const ts = now.toLocaleTimeString('es-MX');
@@ -234,7 +233,6 @@ setInterval(() => {
     document.getElementById('headerClock').innerText = ts;
 }, 1000);
 
-// Plugin fondo blanco
 const backgroundPlugin = {
   id: 'customCanvasBackgroundColor',
   beforeDraw: (chart, args, options) => {
@@ -265,12 +263,10 @@ function downloadImage(id) {
   l.download = id+'.png'; l.href = c.toDataURL('image/png'); l.click();
 }
 
-// Lógica CSV: Acumula lo nuevo para que al descargar tengas TODO
+// Acumulador para CSV
 function appendToCSVBuffer(fbData, totalSamples) {
     if (totalSamples <= latestFirebaseTotal) return;
     const newSamplesCount = totalSamples - latestFirebaseTotal;
-    // Si la diferencia es mayor que el buffer de firebase (3000), perderemos datos intermedios
-    // pero asumimos que actualizamos suficientemente rápido.
     ["CH1","CH2","CH3","CH4","CH5"].forEach(ch => {
         const incoming = fbData[ch] || [];
         const newData = incoming.slice(-newSamplesCount);
@@ -317,57 +313,54 @@ async function updateData() {
     const fb = await res.json();
     if(!fb) return;
 
-    // 1. Obtener "total" histórico para calcular tiempo real
+    // 1. Calcular Eje de Tiempo Global
     const totalSamples = fb.total || 0;
-    
-    // 2. Acumular historial CSV
     appendToCSVBuffer(fb, totalSamples);
 
-    // 3. Preparar datos de visualización (Ventana exacta de Firebase)
     const ecg = fb.CH1 || [];
     const ppg1 = fb.CH2 || [];
     const ppg2 = fb.CH3 || [];
     const ppg3 = fb.CH4 || [];
     const ppg4 = fb.CH5 || [];
 
-    // 4. Generar Eje X Deslizante
-    // Tiempo Final = Total Muestras / 200
-    // Tiempo Inicial = Tiempo Final - (Tamaño buffer actual / 200)
+    // LÓGICA DE TIEMPO DESLIZANTE
+    // El fin es el total acumulado. El inicio es SIEMPRE fin - 15s.
     const endTime = totalSamples / SAMPLE_RATE;
-    const windowDuration = ecg.length / SAMPLE_RATE;
-    let startTime = endTime - windowDuration;
-    if (startTime < 0) startTime = 0;
+    const startTime = endTime - 15; // Forzamos ventana de 15s
 
     const labels = [];
-    for(let i=0; i<ecg.length; i++) {
-        labels.push((startTime + (i/SAMPLE_RATE)).toFixed(1));
+    // Generamos etiquetas para los 3000 puntos que vienen de Firebase
+    // Si al principio hay menos de 3000 muestras reales, igual graficamos en el tiempo correcto
+    // alineado a la derecha.
+    const points = ecg.length; 
+    // Empezamos a etiquetar desde (endTime - duración del buffer recibido)
+    const bufferDuration = points / SAMPLE_RATE;
+    const startLabelTime = endTime - bufferDuration;
+
+    for(let i=0; i<points; i++) {
+        labels.push((startLabelTime + (i/SAMPLE_RATE)).toFixed(1));
     }
 
-    // Colores
     const c1='#319ed4', c2='#2362ab', c3='#8a8bd6', c4='#4e4589', c5='#2e9696';
     const draw = (id, l, ds) => renderChart(id, l, ds);
 
-    // Resumen
     draw('all_c1', labels, [{l:'ECG', d:ecg, c:c1}]);
     draw('all_c2', labels, [{l:'Ind Izq', d:ppg1, c:c2}]);
     draw('all_c3', labels, [{l:'Ind Der', d:ppg2, c:c3}]);
     draw('all_c4', labels, [{l:'Pie Izq', d:ppg3, c:c4}]);
     draw('all_c5', labels, [{l:'Pie Der', d:ppg4, c:c5}]);
 
-    // Detalles y Stats
     updateStats('ecg', ecg); draw('ecgChart', labels, [{l:'ECG', d:ecg, c:c1}]);
     updateStats('ppg1', ppg1); draw('ppg1', labels, [{l:'Ind Izq', d:ppg1, c:c2}]);
     updateStats('ppg2', ppg2); draw('ppg2', labels, [{l:'Ind Der', d:ppg2, c:c3}]);
     updateStats('ppg3', ppg3); draw('ppg3', labels, [{l:'Pie Izq', d:ppg3, c:c4}]);
     updateStats('ppg4', ppg4); draw('ppg4', labels, [{l:'Pie Der', d:ppg4, c:c5}]);
 
-    // Comparaciones
     updateComp('comp_manos', ppg1, ppg2);
     draw('compareManos', labels, [{l:'Izq', d:ppg1, c:c2}, {l:'Der', d:ppg2, c:c3}]);
     updateComp('comp_pies', ppg3, ppg4);
     draw('comparePies', labels, [{l:'Izq', d:ppg3, c:c4}, {l:'Der', d:ppg4, c:c5}]);
 
-    // Grid PPG
     draw('ppg_only_c2', labels, [{l:'Ind Izq', d:ppg1, c:c2}]);
     draw('ppg_only_c3', labels, [{l:'Ind Der', d:ppg2, c:c3}]);
     draw('ppg_only_c4', labels, [{l:'Pie Izq', d:ppg3, c:c4}]);
@@ -386,7 +379,7 @@ function renderChart(id, lbs, dsets) {
     if(charts[id]) {
         charts[id].data.labels = lbs;
         charts[id].data.datasets = datasets;
-        charts[id].update('none'); // Update fluido sin animación
+        charts[id].update('none');
     } else {
         charts[id] = new Chart(ctx, {
             type: 'line',
@@ -396,7 +389,6 @@ function renderChart(id, lbs, dsets) {
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: true },
-                    // CORRECCIÓN SOLICITADA: LEYENDA EJE Y
                     customCanvasBackgroundColor: { color: '#ffffff' }
                 },
                 scales: {
@@ -408,7 +400,7 @@ function renderChart(id, lbs, dsets) {
                     },
                     y: { 
                         display: true, 
-                        // CORRECCIÓN SOLICITADA: LEYENDA EJE Y
+                        // --- AQUÍ ESTÁ LA ETIQUETA DE VOLTAJE QUE FALTABA ---
                         title: { display: true, text: 'Voltaje (V)', color:'#6b7280', font:{size:10, weight:'bold'} },
                         ticks: { color: '#6b7280' }, 
                         grid: { color: '#e5e7eb' } 
