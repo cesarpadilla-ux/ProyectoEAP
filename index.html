@@ -3,227 +3,736 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Vessel View - Monitor en Vivo</title>
+<title>Vessel View ECG / PPG</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  /* --- Estilos (Simplificados para brevedad) --- */
+  /* Diseño en modo claro */
   :root {
-    --bg-body: #f8f9fa; --bg-card: #ffffff; --text-primary: #1f2937;
-    --accent-color: #059669; --border-color: #e2e8f0;
-    --font-ui: 'Segoe UI', sans-serif; --font-mono: 'Consolas', monospace;
+    --bg-body: #f8f9fa;       
+    --bg-sidebar: #ffffff;    
+    --bg-card: #ffffff;       
+    --bg-card-hover: #f1f5f9;
+    --bg-stats: #f3f4f6;      
+    
+    --text-primary: #1f2937;  
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;    
+    
+    --accent-color: #059669 ;  
+    --accent-dim: rgba(5, 150, 105, 0.1);
+    
+    --border-color: #e2e8f0;  
+    --header-bg: rgba(255, 255, 255, 0.95);
+    
+    --font-ui: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'Consolas', 'Monaco', monospace; 
+    
+    --shadow-card: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
-  body { background: var(--bg-body); color: var(--text-primary); font-family: var(--font-ui); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-  
-  /* Header */
-  header { background: rgba(255,255,255,0.95); border-bottom: 1px solid var(--border-color); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
-  .brand { font-weight: 700; text-transform: uppercase; font-size: 1.1rem; }
-  .brand span { color: var(--accent-color); }
-  .csv-btn { background: var(--text-primary); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
-  .csv-btn:hover { background: #000; }
 
-  /* Layout */
-  .main-container { display: flex; height: calc(100vh - 60px); }
-  .menu { width: 220px; background: white; border-right: 1px solid var(--border-color); padding: 20px 10px; display: flex; flex-direction: column; gap: 5px; }
-  .menu button { padding: 10px; border: none; background: transparent; text-align: left; cursor: pointer; color: #64748b; border-radius: 6px; }
-  .menu button.active { background: rgba(5,150,105,0.1); color: var(--accent-color); font-weight: 700; }
+  /* --- Estilos Base  */
+  body { 
+    background: var(--bg-body); 
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    margin: 0; 
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* --- Header  */
+  header { 
+    background: var(--header-bg); 
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 25px; 
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0; left: 0; width: 100%; z-index: 1000;
+    box-sizing: border-box;
+    backdrop-filter: blur(8px);
+  }
+
+  .brand-area { display: flex; align-items: center; gap: 20px; }
+
+  .brand {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand span { color: var(--accent-color); font-weight: 600; }
+
+  .live-clock {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-left: 2px solid var(--border-color);
+    padding-left: 20px;
+    font-weight: 500;
+  }
+
+  .header-controls { display: flex; gap: 10px; }
+
+  .menu-toggle {
+    background: none; border: none; color: var(--text-primary);
+    font-size: 24px; cursor: pointer; display: none; margin-right: 15px;
+  }
+
+  .csv-btn {
+    background: var(--text-primary); 
+    color: white;
+    border: 1px solid var(--text-primary);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .csv-btn:hover {
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  /* --- Layout  */
+  .main-container {
+    display: flex;
+    margin-top: 60px; 
+    height: calc(100vh - 60px);
+    width: 100%;
+  }
+
+  /* --- Sidebar  */
+  .menu { 
+    width: 250px; 
+    background: var(--bg-sidebar); 
+    padding: 30px 15px; 
+    overflow-y: auto; 
+    border-right: 1px solid var(--border-color); 
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: transform 0.3s ease;
+  }
+
+  .menu-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin: 20px 15px 8px 15px;
+    font-weight: 700;
+  }
+  .menu-section-title:first-child { margin-top: 0; }
+
+  .menu button { 
+    width: 100%; 
+    padding: 10px 15px; 
+    border: none; 
+    background: transparent; 
+    cursor: pointer; 
+    font-size: 0.85rem; 
+    border-radius: 6px; 
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: left;
+    transition: all 0.2s;
+    letter-spacing: 0.2px;
+    display: flex;
+    align-items: center;
+  }
   
-  .content { flex: 1; padding: 20px; overflow-y: auto; }
+  .menu button:hover { 
+    background: #f1f5f9;
+    color: var(--text-primary);
+  }
   
-  /* Cards */
-  .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
-  .card { background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-  h2 { font-size: 0.9rem; margin: 0 0 10px 0; border-bottom: 1px solid #eee; padding-bottom: 8px; display: flex; justify-content: space-between; }
+  .menu button.active { 
+    background: var(--accent-dim); 
+    color: var(--accent-color);
+    font-weight: 700;
+    border-left: 3px solid var(--accent-color);
+  }
   
-  .chart-container { position: relative; height: 250px; width: 100%; }
+  /* --- Contenido  */
+  .content { 
+    flex-grow: 1; 
+    padding: 30px; 
+    overflow-y: auto; 
+    background: var(--bg-body);
+  }
+
+  /* --- Barra de Paciente  */
+  .patient-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 15px 25px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow-card);
+  }
+  .patient-info { display: flex; gap: 50px; flex-wrap: wrap; }
+  .p-item { display: flex; flex-direction: column; gap: 2px; }
+  .p-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  .p-value { font-size: 0.95rem; color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); }
+
+  /* --- Grid Dashboard  */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 20px;
+  }
+  .dashboard-grid .card { margin-bottom: 0; }
+
+  /* --- Tarjetas  */
+  .card { 
+    background: var(--bg-card); 
+    padding: 20px; 
+    border-radius: 8px; 
+    margin-bottom: 20px; 
+    border: 1px solid var(--border-color); 
+    box-shadow: var(--shadow-card);
+    position: relative;
+    display: flex; flex-direction: column;
+  }
   
-  /* Info Bar */
-  .info-bar { display: flex; gap: 20px; margin-bottom: 20px; background: white; padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.9rem; }
-  .info-item b { display: block; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; }
+  h2 { 
+    margin: 0 0 15px 0;
+    font-size: 0.95rem; 
+    text-align: left; 
+    color: var(--text-primary); 
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+  }
+
+  /* --- Métricas  */
+  .stats-panel {
+    display: flex;
+    gap: 30px;
+    background: var(--bg-stats); 
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    align-items: center;
+  }
+  .stat-item { display: flex; flex-direction: column; min-width: 60px; }
+  .stat-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .stat-val { font-family: var(--font-mono); font-size: 1.1rem; color: var(--text-primary); font-weight: 600; }
+  
+  /* ----Botón Cámara */
+  .camera-btn {
+    background: white; border: 1px solid var(--border-color);
+    color: var(--text-secondary); border-radius: 4px;
+    font-size: 1rem; cursor: pointer; transition: all 0.2s; 
+    padding: 4px 8px;
+  }
+  .camera-btn:hover { color: var(--accent-color); border-color: var(--accent-color); background: var(--bg-stats); }
+
+  /* --- Instrucciones Grid  */
+  .instructions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+  }
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.2s;
+  }
+  .step-card:hover { transform: translateY(-2px); }
+  .step-header { display: flex; align-items: center; gap: 12px; }
+  .step-number {
+    font-family: var(--font-mono); font-size: 0.9rem; font-weight: 700;
+    color: var(--accent-color); background: var(--accent-dim);
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  }
+  .step-title { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase; }
+  .step-desc { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; }
+  .step-desc b { color: var(--text-primary); font-weight: 600;}
+
+  /* ----Gráficas */
+  .chart-container { position: relative; height: 280px; width: 100%; } 
+  .chart-container-large { position: relative; height: 450px; width: 100%; }
+
+  /* ----Scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #f1f1f1; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  /* ---Impresión */
+  @media print {
+    .menu, header, .menu-toggle, .camera-btn, .csv-btn { display: none !important; }
+    .main-container { margin: 0; height: auto; display: block; }
+    .content { padding: 0; overflow: visible; }
+    .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+    .dashboard-grid { display: block; }
+    .chart-container { height: 200px; }
+  }
+
+  @media (max-width: 768px) {
+    .menu-toggle { display: block; } 
+    .menu { position: fixed; left: 0; top: 60px; height: calc(100vh - 60px); z-index: 999; transform: translateX(-100%); box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+    .menu.open { transform: translateX(0); }
+    .content { padding: 15px; }
+    .dashboard-grid { grid-template-columns: 1fr; } 
+    .chart-container-large { height: 300px; }
+    .patient-bar { display: none; }
+    .live-clock { display: none; }
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="brand">Vessel <span>View</span></div>
-  <button onclick="downloadCSV()" class="csv-btn">⬇ Exportar Historial Completo</button>
+  <div class="brand-area">
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+    <div class="brand">Vessel <span>View</span></div>
+    <div class="live-clock" id="headerClock">--:--:--</div>
+  </div>
+  
+  <div class="header-controls">
+      <button onclick="downloadCSV()" class="csv-btn" title="Descargar datos actuales">
+        ⬇ Exportar CSV
+      </button>
+  </div>
 </header>
 
 <div class="main-container">
-  <div class="menu">
-    <button onclick="showPanel('all_view', this)" class="active">Resumen General</button>
-    <button onclick="showPanel('ecg_view', this)">ECG Detalle</button>
-    <button onclick="showPanel('ppg_view', this)">PPG Detalle</button>
+  <div class="menu" id="sidebar">
+    <div class="menu-section-title">Principal</div>
+    <button onclick="showPanel('instrucciones', this)" class="active">Protocolo</button>
+    <button onclick="showPanel('all_view', this)">Resumen General</button>
+    
+    <div class="menu-section-title">Señales</div>
+    <button onclick="showPanel('ecg', this)">ECG</button>
+    <button onclick="showPanel('ppg_view', this)">Monitor PPG</button>
+    
+    <div class="menu-section-title">Detalle</div>
+    <button onclick="showPanel('ppg_manos', this)">Manos</button>
+    <button onclick="showPanel('ppg_pies', this)">Pies</button>
+    
+    <div class="menu-section-title">Comparación</div>
+    <button onclick="showPanel('comp_manos', this)">Manos</button>
+    <button onclick="showPanel('comp_pies', this)">Pies</button>
   </div>
 
   <div class="content">
-    <div class="info-bar">
-       <div class="info-item"><b>Estado</b><span id="status">Esperando datos...</span></div>
-       <div class="info-item"><b>Tiempo Transcurrido</b><span id="timeDisplay">0.0 s</span></div>
-       <div class="info-item"><b>Muestras Totales</b><span id="samplesDisplay">0</span></div>
+    
+    <div class="patient-bar">
+        <div class="patient-info">
+            <div class="p-item">
+                <span class="p-label">Frecuencia Muestreo</span>
+                <span class="p-value">200 Hz</span>
+            </div>
+            <div class="p-item">
+                <span class="p-label">Ventana Tiempo</span>
+                <span class="p-value">15 s (Dinámica)</span>
+            </div>
+             <div class="p-item">
+                <span class="p-label">ADC</span>
+                <span class="p-value">16-bit</span>
+            </div>
+        </div>
+        <div class="p-item" style="text-align: right;">
+            <span class="p-label">Sesión</span>
+            <span class="p-value" id="sessionTime">--:--:--</span>
+        </div>
     </div>
+    
+    <div id="instrucciones" class="panel">
+      <div style="margin-bottom: 25px;">
+        <h1 style="font-size: 1.5rem; margin:0; font-weight:700; color:var(--text-primary); text-transform:uppercase; letter-spacing:1px;">Protocolo de Operación</h1>
+      </div>
 
-    <div id="all_view" class="panel">
-      <div class="dashboard-grid">
-        <div class="card"><h2>ECG</h2><div class="chart-container"><canvas id="c_ecg"></canvas></div></div>
-        <div class="card"><h2>PPG Ind Izq</h2><div class="chart-container"><canvas id="c_ppg1"></canvas></div></div>
-        <div class="card"><h2>PPG Ind Der</h2><div class="chart-container"><canvas id="c_ppg2"></canvas></div></div>
-        <div class="card"><h2>PPG Pie Izq</h2><div class="chart-container"><canvas id="c_ppg3"></canvas></div></div>
-        <div class="card"><h2>PPG Pie Der</h2><div class="chart-container"><canvas id="c_ppg4"></canvas></div></div>
+      <div class="instructions-grid">
+        <div class="step-card"><div class="step-header"><div class="step-number">01</div><div class="step-title">Alimentación</div></div><div class="step-desc">Conecte el dispositivo a un enchufe eléctrico.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">02</div><div class="step-title">Encendido</div></div><div class="step-desc">Encienda el switch de baterías y el de alimentación.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">03</div><div class="step-title">Periféricos</div></div><div class="step-desc">Conecte HDMI, Mouse y Teclado a las entradas del dispositivo.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">04</div><div class="step-title">Interfaz</div></div><div class="step-desc">Espere a que cargue el sistema.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">05</div><div class="step-title">Internet</div></div><div class="step-desc">En el ícono de Wi-fi en la esquina superior derecha conéctese a una red, o en caso de no tener acceso puede conectar un cable LAN al lado del puerto USB.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">06</div><div class="step-title">Terminal</div></div><div class="step-desc">Abra la terminal situada en la esquina superior izquierda.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">07</div><div class="step-title">Ruta</div></div><div class="step-desc">Escriba: <b>cd Desktop/EAP</b> y presione enter.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">08</div><div class="step-title">Paciente</div></div><div class="step-desc">Coloque electrodos y dedales según manual de usuario.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">09</div><div class="step-title">Ejecutar</div></div><div class="step-desc">Escriba seguido en la terminal: <b>python3 eap.py</b> y presione enter.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">10</div><div class="step-title">Medir</div></div><div class="step-desc">Adquiera datos mínimo durante 15 segundos, luego presione "detener".</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">11</div><div class="step-title">Confirmación</div></div><div class="step-desc">Verifique mensaje de transferencia exitosa. En caso de recibir mensaje de error, verificar conexión a internet.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">12</div><div class="step-title">Refrescar</div></div><div class="step-desc">Actualice esta página para ver los nuevos datos.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">13</div><div class="step-title">Datos</div></div><div class="step-desc">Presionar el botón CSV en la esquina superior derecha de la página en caso de querer descargar los datos adquiridos en formato excel.</div></div>
+        <div class="step-card"><div class="step-header"><div class="step-number">14</div><div class="step-title">Imágenes</div></div><div class="step-desc"> Presionar el símbolo de la cámara en la esquina superior derecha de las gráficas que se deseen descargar.</div></div>
       </div>
     </div>
 
-    <div id="ecg_view" class="panel" style="display:none;">
-       <div class="card" style="height: 500px;"><h2>ECG Pantalla Completa</h2><div class="chart-container" style="height: 100%;"><canvas id="c_ecg_full"></canvas></div></div>
+    <div id="ecg" class="panel" style="display:none;">
+      <div class="card">
+        <h2><span>Señal ECG</span><button class="camera-btn" onclick="downloadImage('ecgChart')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máximo</span><span class="stat-val" id="ecg_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mínimo</span><span class="stat-val" id="ecg_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ecg_vpp">--</span></div>
+        </div>
+        <div class="chart-container-large"><canvas id="ecgChart"></canvas></div>
+      </div>
     </div>
+
+    <div id="ppg_manos" class="panel" style="display:none;">
+      <div class="card">
+        <h2><span>PPG Índice Izquierdo</span><button class="camera-btn" onclick="downloadImage('ppg1')">📷</button></h2>
+         <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máximo</span><span class="stat-val" id="ppg1_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mínimo</span><span class="stat-val" id="ppg1_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg1_vpp">--</span></div>
+        </div>
+        <div class="chart-container-large"><canvas id="ppg1"></canvas></div>
+      </div>
+      <div class="card">
+        <h2><span>PPG Índice Derecho</span><button class="camera-btn" onclick="downloadImage('ppg2')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máximo</span><span class="stat-val" id="ppg2_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mínimo</span><span class="stat-val" id="ppg2_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg2_vpp">--</span></div>
+        </div>
+        <div class="chart-container-large"><canvas id="ppg2"></canvas></div>
+      </div>
+    </div>
+
+    <div id="ppg_pies" class="panel" style="display:none;">
+      <div class="card">
+        <h2><span>PPG Hallux Izquierdo</span><button class="camera-btn" onclick="downloadImage('ppg3')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máximo</span><span class="stat-val" id="ppg3_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mínimo</span><span class="stat-val" id="ppg3_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg3_vpp">--</span></div>
+        </div>
+        <div class="chart-container-large"><canvas id="ppg3"></canvas></div>
+      </div>
+      <div class="card">
+        <h2><span>PPG Hallux Derecho</span><button class="camera-btn" onclick="downloadImage('ppg4')">📷</button></h2>
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Máximo</span><span class="stat-val" id="ppg4_max">--</span></div>
+            <div class="stat-item"><span class="stat-label">Mínimo</span><span class="stat-val" id="ppg4_min">--</span></div>
+            <div class="stat-item"><span class="stat-label">Vpp</span><span class="stat-val" id="ppg4_vpp">--</span></div>
+        </div>
+        <div class="chart-container-large"><canvas id="ppg4"></canvas></div>
+      </div>
+    </div>
+
+    <div id="comp_manos" class="panel" style="display:none;">
+      <div class="card">
+        <h2><span>Comparativa Manos</span><button class="camera-btn" onclick="downloadImage('compareManos')">📷</button></h2>
+        
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Δ MÁX (Diff)</span><span class="stat-val" id="comp_manos_max_diff">--</span></div>
+            <div class="stat-item"><span class="stat-label">Δ PROM (Avg)</span><span class="stat-val" id="comp_manos_avg_diff">--</span></div>
+        </div>
+
+        <div class="chart-container-large"><canvas id="compareManos"></canvas></div>
+      </div>
+    </div>
+
+    <div id="comp_pies" class="panel" style="display:none;">
+      <div class="card">
+        <h2><span>Comparativa Pies</span><button class="camera-btn" onclick="downloadImage('comparePies')">📷</button></h2>
+        
+        <div class="stats-panel">
+            <div class="stat-item"><span class="stat-label">Δ MÁX (Diff)</span><span class="stat-val" id="comp_pies_max_diff">--</span></div>
+            <div class="stat-item"><span class="stat-label">Δ PROM (Avg)</span><span class="stat-val" id="comp_pies_avg_diff">--</span></div>
+        </div>
+
+        <div class="chart-container-large"><canvas id="comparePies"></canvas></div>
+      </div>
+    </div>
+
+    <div id="all_view" class="panel" style="display:none;">
+      <h2 style="border:none; color:var(--text-primary); margin-bottom: 20px;">Resumen Clínico</h2>
+      <div class="dashboard-grid">
+          <div class="card"><h2><span>ECG</span><button class="camera-btn" onclick="downloadImage('all_c1')">📷</button></h2><div class="chart-container"><canvas id="all_c1"></canvas></div></div>
+          <div class="card"><h2><span>PPG Ind Izq</span><button class="camera-btn" onclick="downloadImage('all_c2')">📷</button></h2><div class="chart-container"><canvas id="all_c2"></canvas></div></div>
+          <div class="card"><h2><span>PPG Ind Der</span><button class="camera-btn" onclick="downloadImage('all_c3')">📷</button></h2><div class="chart-container"><canvas id="all_c3"></canvas></div></div>
+          <div class="card"><h2><span>PPG Pie Izq</span><button class="camera-btn" onclick="downloadImage('all_c4')">📷</button></h2><div class="chart-container"><canvas id="all_c4"></canvas></div></div>
+          <div class="card"><h2><span>PPG Pie Der</span><button class="camera-btn" onclick="downloadImage('all_c5')">📷</button></h2><div class="chart-container"><canvas id="all_c5"></canvas></div></div>
+      </div>
+    </div>
+
     <div id="ppg_view" class="panel" style="display:none;">
-       <div class="card"><h2>Monitor PPG (4 Canales)</h2><p>Ver resumen general para gráficas individuales.</p></div>
+      <h2 style="border:none; color:var(--text-primary); margin-bottom: 20px;">Monitor PPG (4 Canales)</h2>
+      <div class="dashboard-grid">
+          <div class="card"><h2><span>PPG Índice Izq</span><button class="camera-btn" onclick="downloadImage('ppg_only_c2')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c2"></canvas></div></div>
+          <div class="card"><h2><span>PPG Índice Der</span><button class="camera-btn" onclick="downloadImage('ppg_only_c3')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c3"></canvas></div></div>
+          <div class="card"><h2><span>PPG Hallux Izq</span><button class="camera-btn" onclick="downloadImage('ppg_only_c4')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c4"></canvas></div></div>
+          <div class="card"><h2><span>PPG Hallux Der</span><button class="camera-btn" onclick="downloadImage('ppg_only_c5')">📷</button></h2><div class="chart-container"><canvas id="ppg_only_c5"></canvas></div></div>
+      </div>
     </div>
 
   </div>
 </div>
 
 <script>
+// --- Configuración Global ---
 const FIREBASE_URL = 'https://practicumii-a9956-default-rtdb.firebaseio.com/ad7606.json';
-const SAMPLE_RATE = 200;
-const WINDOW_SECONDS = 15;
-const WINDOW_SAMPLES = SAMPLE_RATE * WINDOW_SECONDS; // 3000
+const SAMPLE_RATE = 200;  
+const SECONDS_TO_SHOW = 15; 
+const BUFFER_SIZE = SAMPLE_RATE * SECONDS_TO_SHOW; 
 
-// Aquí acumularemos TODO el historial para el CSV
-let localHistory = { CH1: [], CH2: [], CH3: [], CH4: [], CH5: [] };
+let charts = {}; 
+let globalData = {}; 
+let isPaused = false; 
 
-let charts = {};
+// Buffer local para acumular datos
+let localData = { CH1: [], CH2: [], CH3: [], CH4: [], CH5: [] };
+
+// Reloj
+setInterval(() => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('es-MX');
+    document.getElementById('sessionTime').innerText = timeStr;
+    document.getElementById('headerClock').innerText = timeStr;
+}, 1000);
+
+// Plugin fondo BLANCO
+const backgroundPlugin = {
+  id: 'customCanvasBackgroundColor',
+  beforeDraw: (chart, args, options) => {
+    const {ctx} = chart;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = '#ffffff'; 
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.restore();
+  }
+};
+Chart.register(backgroundPlugin);
+
+function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); }
 
 function showPanel(id, btn) {
   document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-  document.getElementById(id).style.display = 'block';
-  document.querySelectorAll('.menu button').forEach(b => b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+  const panel = document.getElementById(id);
+  panel.style.display = 'block';
+  if (btn) {
+    document.querySelectorAll('.menu button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
 }
 
-// Inicializar gráficas
-function initChart(id, color) {
-    const ctx = document.getElementById(id).getContext('2d');
-    return new Chart(ctx, {
-        type: 'line',
-        data: { labels: [], datasets: [{ data: [], borderColor: color, borderWidth: 1.5, pointRadius: 0, tension: 0.1 }] },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { ticks: { color: '#666', maxTicksLimit: 10 }, grid: { display: false }, title: {display: true, text: 'Tiempo (s)'} },
-                y: { ticks: { color: '#666' }, grid: { color: '#f0f0f0' } }
-            }
-        }
-    });
-}
-
-charts['c_ecg']  = initChart('c_ecg', '#0ea5e9'); // Azul
-charts['c_ppg1'] = initChart('c_ppg1', '#22c55e'); // Verde
-charts['c_ppg2'] = initChart('c_ppg2', '#eab308'); // Amarillo
-charts['c_ppg3'] = initChart('c_ppg3', '#f97316'); // Naranja
-charts['c_ppg4'] = initChart('c_ppg4', '#ef4444'); // Rojo
-charts['c_ecg_full'] = initChart('c_ecg_full', '#0ea5e9');
-
-async function updateData() {
-    try {
-        const res = await fetch(FIREBASE_URL);
-        const fb = await res.json();
-        if (!fb) return;
-
-        // 1. OBTENER INFORMACIÓN DE TIEMPO
-        // 'fb.total' es el número total de muestras que ha procesado la Raspberry
-        const totalSamplesServer = fb.total || 0;
-        const currentLocalLength = localHistory.CH1.length;
-
-        document.getElementById('samplesDisplay').innerText = totalSamplesServer;
-        document.getElementById('status').innerText = "Recibiendo datos...";
-        
-        // 2. SINCRONIZAR DATOS (Acumular en localHistory)
-        // Si el servidor tiene más datos que nosotros, calculamos cuántos nos faltan
-        if (totalSamplesServer > currentLocalLength) {
-            const newSamplesCount = totalSamplesServer - currentLocalLength;
-            
-            // Tomamos los últimos 'newSamplesCount' del buffer que envió Firebase
-            // (El buffer de FB tiene máx 3000, así que si nos atrasamos mucho perderemos datos, 
-            // pero con 0.5s de update y buffer de 15s, estamos seguros).
-            
-            const channelKeys = ["CH1","CH2","CH3","CH4","CH5"];
-            channelKeys.forEach(ch => {
-                const bufferRemoto = fb[ch] || [];
-                // Extraer solo lo nuevo
-                const chunk = bufferRemoto.slice(-newSamplesCount); 
-                // Agregarlo a nuestro historial local
-                localHistory[ch].push(...chunk);
-            });
-        }
-
-        // 3. CALCULAR EJE DE TIEMPO "DESLIZANTE"
-        // El tiempo final es el total de muestras / 200
-        const endTime = totalSamplesServer / SAMPLE_RATE;
-        document.getElementById('timeDisplay').innerText = endTime.toFixed(1) + " s";
-
-        // El tiempo inicial de la gráfica es (Final - 15s), pero no menor a 0
-        let startTime = endTime - WINDOW_SECONDS;
-        if (startTime < 0) startTime = 0;
-
-        // 4. PREPARAR DATOS PARA VISUALIZAR (Solo últimos 3000 puntos)
-        // Usamos slice(-3000) sobre el historial local que ya tenemos sincronizado
-        const sliceStart = Math.max(0, localHistory.CH1.length - WINDOW_SAMPLES);
-        
-        const dataToView = {
-            CH1: localHistory.CH1.slice(sliceStart),
-            CH2: localHistory.CH2.slice(sliceStart),
-            CH3: localHistory.CH3.slice(sliceStart),
-            CH4: localHistory.CH4.slice(sliceStart),
-            CH5: localHistory.CH5.slice(sliceStart)
-        };
-
-        // Generar etiquetas de tiempo correctas (Ej: 15.1, 15.2 ... 30.0)
-        // El primer punto de 'dataToView' corresponde al tiempo 'startTime'
-        const labels = [];
-        for (let i = 0; i < dataToView.CH1.length; i++) {
-            labels.push((startTime + (i / SAMPLE_RATE)).toFixed(1));
-        }
-
-        // 5. RENDERIZAR
-        const updateChart = (id, data) => {
-            if(charts[id]) {
-                charts[id].data.labels = labels;
-                charts[id].data.datasets[0].data = data;
-                charts[id].update();
-            }
-        };
-
-        updateChart('c_ecg', dataToView.CH1);
-        updateChart('c_ppg1', dataToView.CH2);
-        updateChart('c_ppg2', dataToView.CH3);
-        updateChart('c_ppg3', dataToView.CH4);
-        updateChart('c_ppg4', dataToView.CH5);
-        updateChart('c_ecg_full', dataToView.CH1);
-
-    } catch (e) {
-        console.error("Error update:", e);
-    }
+function downloadImage(chartId) {
+  const canvas = document.getElementById(chartId);
+  const link = document.createElement('a');
+  link.download = chartId + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 function downloadCSV() {
-    if (localHistory.CH1.length === 0) { alert("Sin datos"); return; }
-    let csv = "Time(s),ECG,PPG_Ind_Izq,PPG_Ind_Der,PPG_Pie_Izq,PPG_Pie_Der\n";
-    
-    for (let i = 0; i < localHistory.CH1.length; i++) {
+    // Descarga desde localData que puede tener datos anteriores si sincronizamos bien, 
+    // pero para el modo ventana deslizante estricto, descargará lo que hay en memoria.
+    if (!localData.CH1 || localData.CH1.length === 0) { alert("Sin datos..."); return; }
+    let csvContent = "data:text/csv;charset=utf-8,Muestra,ECG,PPG_Ind_Izq,PPG_Ind_Der,PPG_Pie_Izq,PPG_Pie_Der\n";
+    const len = localData.CH1.length;
+    for(let i = 0; i < len; i++) {
+        // El tiempo en CSV es relativo al inicio de la captura de este bloque
         const t = (i / SAMPLE_RATE).toFixed(3);
-        csv += `${t},${localHistory.CH1[i]},${localHistory.CH2[i]},${localHistory.CH3[i]},${localHistory.CH4[i]},${localHistory.CH5[i]}\n`;
+        const row = [t, localData.CH1[i], localData.CH2[i], localData.CH3[i], localData.CH4[i], localData.CH5[i]].join(",");
+        csvContent += row + "\r\n";
     }
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "registro_completo_" + Date.now() + ".csv";
-    a.click();
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "registro_" + new Date().getTime() + ".csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
-// Actualizar cada 500ms
+function updateStats(prefix, data) {
+    if (!data || data.length === 0) return;
+    let max = -Infinity, min = Infinity;
+    for (let x of data) { if (x>max) max=x; if(x<min) min=x; }
+    const elMax = document.getElementById(`${prefix}_max`);
+    const elMin = document.getElementById(`${prefix}_min`);
+    const elVpp = document.getElementById(`${prefix}_vpp`);
+    if (elMax) elMax.innerText = max.toFixed(3);
+    if (elMin) elMin.innerText = min.toFixed(3);
+    if (elVpp) elVpp.innerText = (max - min).toFixed(3);
+}
+
+function updateComparisonStats(prefix, data1, data2) {
+    if (!data1 || !data2 || !data1.length) return;
+    let maxDiff = 0, totalDiff = 0;
+    const len = Math.min(data1.length, data2.length);
+    for (let i = 0; i < len; i++) {
+        const diff = Math.abs(data1[i] - data2[i]);
+        if (diff > maxDiff) maxDiff = diff;
+        totalDiff += diff;
+    }
+    const elMaxDiff = document.getElementById(`${prefix}_max_diff`);
+    const elAvgDiff = document.getElementById(`${prefix}_avg_diff`);
+    if (elMaxDiff) elMaxDiff.innerText = maxDiff.toFixed(3);
+    if (elAvgDiff) elAvgDiff.innerText = (totalDiff / len).toFixed(3);
+}
+
+// --- FUNCIÓN DE ACTUALIZACIÓN EN VIVO (0.5s) ---
+async function updateData() {
+  if (isPaused) return; 
+
+  try {
+    const res = await fetch(FIREBASE_URL);
+    const fb = await res.json();
+    if (!fb) return;
+
+    // 1. Sincronizar buffer local con los datos de Firebase (Buffer de 3000)
+    // Simplemente reemplazamos porque Python ya nos manda la ventana exacta de 3000.
+    ["CH1","CH2","CH3","CH4","CH5"].forEach(ch => {
+        localData[ch] = fb[ch] || [];
+    });
+
+    // 2. Calcular EJE DE TIEMPO DESLIZANTE
+    // fb.total es el número total de muestras procesadas por Python desde que arrancó.
+    // Si fb.total = 3200 (16s), y tenemos 3000 muestras, 
+    // significa que nuestras muestras van de la 200 a la 3200.
+    const totalSamplesProcessed = fb.total || 0;
+    const currentWindowSize = localData.CH1.length;
+    
+    // El tiempo final de la gráfica corresponde al total de muestras
+    const endTime = totalSamplesProcessed / SAMPLE_RATE;
+    
+    // El tiempo inicial es el final menos la duración de los datos que tenemos
+    let startTime = endTime - (currentWindowSize / SAMPLE_RATE);
+    if (startTime < 0) startTime = 0;
+
+    // 3. Generar etiquetas de tiempo dinámicas
+    const labels = [];
+    for(let i = 0; i < currentWindowSize; i++) {
+        // Tiempo = StartTime + (indice / SampleRate)
+        labels.push((startTime + (i / SAMPLE_RATE)).toFixed(1));
+    }
+
+    // Datos listos para graficar
+    const ecg = localData.CH1;
+    const ppg1 = localData.CH2;
+    const ppg2 = localData.CH3;
+    const ppg3 = localData.CH4;
+    const ppg4 = localData.CH5;
+
+    // Colores
+    const colECG = '#319ed4'; const colPPG1 = '#2362ab'; 
+    const colPPG2 = '#8a8bd6'; const colPPG3 = '#4e4589'; const colPPG4 = '#2e9696'; 
+    
+    const draw = (id, lbls, datasets) => renderChart(id, lbls, datasets);
+
+    // --- Resumen General ---
+    draw('all_c1', labels, [{ label: 'ECG', data: ecg, color: colECG }]);
+    draw('all_c2', labels, [{ label: 'Ind Izq', data: ppg1, color: colPPG1 }]);
+    draw('all_c3', labels, [{ label: 'Ind Der', data: ppg2, color: colPPG2 }]);
+    draw('all_c4', labels, [{ label: 'Pie Izq', data: ppg3, color: colPPG3 }]);
+    draw('all_c5', labels, [{ label: 'Pie Der', data: ppg4, color: colPPG4 }]);
+
+    // --- Paneles de Detalle ---
+    updateStats('ecg', ecg);
+    draw('ecgChart', labels, [{ label: 'ECG', data: ecg, color: colECG }]);
+    
+    updateStats('ppg1', ppg1); draw('ppg1', labels, [{ label: 'Ind Izq', data: ppg1, color: colPPG1 }]);
+    updateStats('ppg2', ppg2); draw('ppg2', labels, [{ label: 'Ind Der', data: ppg2, color: colPPG2 }]);
+    
+    updateStats('ppg3', ppg3); draw('ppg3', labels, [{ label: 'Pie Izq', data: ppg3, color: colPPG3 }]);
+    updateStats('ppg4', ppg4); draw('ppg4', labels, [{ label: 'Pie Der', data: ppg4, color: colPPG4 }]);
+
+    // --- Comparaciones ---
+    updateComparisonStats('comp_manos', ppg1, ppg2);
+    draw('compareManos', labels, [
+      { label: 'Izq', data: ppg1, color: colPPG1 }, { label: 'Der', data: ppg2, color: colPPG2 }
+    ]);
+    
+    updateComparisonStats('comp_pies', ppg3, ppg4);
+    draw('comparePies', labels, [
+      { label: 'Izq', data: ppg3, color: colPPG3 }, { label: 'Der', data: ppg4, color: colPPG4 }
+    ]);
+
+    // --- PPG Grid ---
+    draw('ppg_only_c2', labels, [{ label: 'Ind Izq', data: ppg1, color: colPPG1 }]);
+    draw('ppg_only_c3', labels, [{ label: 'Ind Der', data: ppg2, color: colPPG2 }]);
+    draw('ppg_only_c4', labels, [{ label: 'Pie Izq', data: ppg3, color: colPPG3 }]);
+    draw('ppg_only_c5', labels, [{ label: 'Pie Der', data: ppg4, color: colPPG4 }]);
+
+  } catch (error) { console.error("Error:", error); }
+}
+
+// Renderizado Optimizado: Si existe, actualiza; si no, crea.
+function renderChart(canvasId, labels, datasets) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  
+  if (charts[canvasId]) {
+      // ACTUALIZAR (Sin parpadeo)
+      charts[canvasId].data.labels = labels;
+      charts[canvasId].data.datasets.forEach((ds, i) => {
+          if (datasets[i]) {
+              ds.data = datasets[i].data;
+          }
+      });
+      charts[canvasId].update('none'); // 'none' evita la animación completa
+  } else {
+      // CREAR (Primera vez)
+      const chartDatasets = datasets.map(ds => ({
+        label: ds.label, data: ds.data, borderColor: ds.color,
+        backgroundColor: ds.color, borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.1
+      }));
+
+      charts[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: chartDatasets },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false, 
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true },
+            tooltip: { enabled: true, mode: 'index', intersect: false },
+            customCanvasBackgroundColor: { color: '#ffffff' }
+          },
+          scales: {
+            x: { 
+                display: true, 
+                ticks: { maxTicksLimit: 10, color: '#6b7280' }, 
+                grid: { color: '#e5e7eb' },
+                title: { display: true, text: 'Tiempo (s)' } // Etiqueta del eje
+            },
+            y: { display: true, ticks: { color: '#6b7280' }, grid: { color: '#e5e7eb' } }
+          }
+        }
+      });
+  }
+}
+
+// Iniciar actualización cada 0.5 segundos
 setInterval(updateData, 500);
 </script>
 </body>
